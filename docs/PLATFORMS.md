@@ -15,3 +15,11 @@ Initial Mac limits: no app-lock UI, camera capture or desktop widget extension. 
 ## Validation
 
 CI first builds/tests the native Mac scheme with shared unit tests and Mac-specific UI smoke tests. It then runs iPhone and iPad on the same runner, reusing the iOS build and keeping simulator parallel testing disabled. Artifacts separate screenshots by platform. No release or tag is authorized by these changes.
+
+## Writing and recovery
+
+New entry text, date and place are kept locally while writing. **Keep Draft** returns to the book without publishing the entry; the shelf shows **Continue unfinished page**. Resolve an existing unfinished page before beginning another. Pictures are retained only by saving the entry, and edits to an existing entry are retained only by saving; the writer explains both limits. Keep Draft asks before leaving attached pictures behind.
+
+Saving waits for picture imports to finish. Import progress and failed picture names are shown, and successful pictures stay available when another fails. On Mac, use Photos, the file picker or drop picture files onto the writer. Failed entry/journal saves keep the editor open for retry. PDF/Markdown write failures are reported separately from cancellation.
+
+On Mac, the menus expose Settings (Command-comma), New Journal (Command-Shift-N), Write Entry (Command-N) and Find (Command-F). Commands are unavailable while editing a sheet. The bookshelf control returns from the reader; page arrows turn pages. New bookmarks and manual page turns preserve an entry text location during reflow; old bookmarks remain readable. The writing control has reserved space below the page, and unusually tall content includes a scroll hint.

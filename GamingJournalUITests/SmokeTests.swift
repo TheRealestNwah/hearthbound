@@ -11,11 +11,11 @@ final class SmokeTests: XCTestCase {
         continueAfterFailure = false
     }
 
-    private func launch(demoData: Bool = false, skipOnboarding: Bool = true) -> XCUIApplication {
+    private func launch(demoData: Bool = false, skipOnboarding: Bool = true, arguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTesting"]
             + (demoData ? ["-demoData"] : [])
-            + (skipOnboarding ? ["-onboarding.completed", "YES"] : [])
+            + (skipOnboarding ? ["-onboarding.completed", "YES"] : []) + arguments
         app.launch()
         if !skipOnboarding { return app }
         XCTAssertTrue(app.buttons["Begin a new journal"].waitForExistence(timeout: 20))
@@ -167,6 +167,57 @@ final class SmokeTests: XCTestCase {
         app.navigationBars["Settings"].buttons["Close"].tap()
         XCTAssertTrue(app.buttons["Begin a new journal"].waitForExistence(timeout: Self.step))
     }
+    func testKeepDraftRequiresRecoveryDecisionAndResumesFromShelf() {
+        let app = launch(demoData: true)
+        element(containing: "Eira Stormborn", in: app).tap()
+        app.buttons["Write a new entry"].tap()
+        type("A thought to finish tomorrow.", into: app.textViews["entryBody"])
+        app.buttons["keepDraft"].tap()
+        XCTAssertTrue(app.buttons["Back to journals"].waitForExistence(timeout: Self.step))
+        app.buttons["Back to journals"].tap()
+        let resume = app.buttons["resumeDraft"]
+        XCTAssertTrue(resume.waitForExistence(timeout: Self.step))
+        resume.tap()
+        let carryOn = app.buttons["Carry on writing"]
+        XCTAssertTrue(carryOn.waitForExistence(timeout: Self.step))
+        XCTAssertFalse(app.buttons["Done"].isEnabled)
+        XCTAssertFalse(app.textViews["entryBody"].isEnabled)
+        capture("qa-unfinished-page", in: app)
+        carryOn.tap()
+        XCTAssertEqual(app.textViews["entryBody"].value as? String, "A thought to finish tomorrow.")
+        app.buttons["Done"].tap()
+        XCTAssertTrue(app.buttons["Begin a new journal"].waitForExistence(timeout: Self.step))
+        XCTAssertFalse(resume.exists)
+    }
+
+    func testSaveFailureKeepsWritingAndRetrySucceeds() {
+        let app = launch(demoData: true, arguments: ["-failNextSave", "YES"])
+        element(containing: "Eira Stormborn", in: app).tap()
+        app.buttons["Write a new entry"].tap()
+        type("Keep me after a failed save.", into: app.textViews["entryBody"])
+        app.buttons["Done"].tap()
+        XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: Self.step))
+        app.alerts.buttons["OK"].tap()
+        XCTAssertEqual(app.textViews["entryBody"].value as? String, "Keep me after a failed save.")
+        app.buttons["Done"].tap()
+        XCTAssertTrue(element(containing: "Keep me after a failed save.", in: app).waitForExistence(timeout: Self.step))
+    }
+
+    func testSaveWaitsForPictureImportAndShowsFailure() {
+        let app = launch(demoData: true, arguments: ["-delayedPhotoImport", "YES"])
+        element(containing: "Eira Stormborn", in: app).tap()
+        app.buttons["Write a new entry"].tap()
+        type("Words remain when a picture fails.", into: app.textViews["entryBody"])
+        app.buttons["Test picture import"].tap()
+        XCTAssertFalse(app.buttons["Done"].isEnabled)
+        XCTAssertFalse(app.buttons["keepDraft"].isEnabled)
+        XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: Self.step))
+        app.alerts.buttons["OK"].tap()
+        XCTAssertTrue(app.buttons["Done"].isEnabled)
+        XCTAssertEqual(app.textViews["entryBody"].value as? String, "Words remain when a picture fails.")
+        app.buttons["Done"].tap()
+    }
+
 }
 
 #endif

@@ -32,7 +32,12 @@ enum DemoData {
         // UI-only fixture: enough text to exercise many spreads at any iPad size.
         if LaunchOptions.isUITesting && ProcessInfo.processInfo.arguments.contains("-longDemoData"),
            let first = sample.story.first {
-            first.body += String(repeating: "\n\nThe mountain road wound through the snow. I stopped at the old watchtower and recorded the landmarks before continuing toward the river.", count: 35)
+            first.body += (1...35).map {
+                "\n\nMilestone \($0). The mountain road wound through the snow. I stopped at the old watchtower and recorded the landmarks before continuing toward the river."
+            }.joined()
+        }
+        if LaunchOptions.isUITesting && ProcessInfo.processInfo.arguments.contains("-missingPhoto") {
+            sample.latestEntry?.photos = [EntryPhoto(imageData: nil, thumbnailData: nil)]
         }
         context.insert(sample)
         try? context.save()

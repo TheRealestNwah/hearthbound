@@ -100,6 +100,8 @@ struct PhotoViewer: View {
                 if let photo = photos.first(where: { $0.id == selection }),
                    let data = photo.imageData, let image = PlatformImage(data: data) {
                     Image(platformImage: image).resizable().scaledToFit()
+                } else {
+                    ContentUnavailableView("Photo unavailable", systemImage: "photo", description: Text("The full picture has not downloaded or could not be read. Try again after syncing."))
                 }
                 HStack {
                     Button("Previous picture") { move(-1) }

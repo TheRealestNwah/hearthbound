@@ -94,6 +94,7 @@ struct SettingsView: View {
                 Alert(title: Text(message.title), message: Text(message.body))
             }
         }
+        .journalCommandActions(JournalCommandActions())
         .tint(Theme.rubric)
         .journalSheetSize()
     }

@@ -107,7 +107,7 @@ final class JournalPagerTests: XCTestCase {
     func testParagraphBreaksSurvive() {
         let pager = JournalPager(charactersPerLine: 40, linesPerPage: 20)
         let pages = pager.pages(for: [item("First thought.\n\nSecond thought.")])
-        XCTAssertEqual(pages[0].blocks[0].text, "First thought.\nSecond thought.")
+        XCTAssertEqual(pages[0].blocks[0].text, "First thought.\n\nSecond thought.")
     }
 
     func testFacingPagesOnlyOnWideLandscapeScreens() {
@@ -153,4 +153,33 @@ final class JournalPagerTests: XCTestCase {
         XCTAssertEqual(JournalPager.pageIndex(of: long.id, part: lastPart + 5, in: pages), pages.count - 1)
         XCTAssertNil(JournalPager.pageIndex(of: UUID(), part: 0, in: pages))
     }
+    func testPageSlicesPreserveLongWordsWhitespaceAndUnicodeExactly() {
+        let body = "abcdefghijklmno  https://example.com/averylongpath\n\n雪山の旅人👩🏽‍🚀は帰らない\tEnd."
+        for pager in [JournalPager(charactersPerLine: 10, linesPerPage: 9),
+                      JournalPager(width: 80, height: 200, fontSize: 19)] {
+            let blocks = pager.pages(for: [item(body)]).flatMap(\.blocks)
+            XCTAssertEqual(blocks.map(\.text).joined(), body)
+            var offset = 0
+            for block in blocks {
+                XCTAssertEqual(block.textOffset, offset)
+                offset += (block.text as NSString).length
+            }
+        }
+    }
+
+    func testSourceLocationSurvivesReflowInTheMiddleOfAnEntry() throws {
+        let entry = item((0..<120).map { "Milestone \($0) beside the winding mountain road." }.joined(separator: "\n"))
+        let narrow = JournalPager(charactersPerLine: 24, linesPerPage: 15).pages(for: [entry])
+        let oldPage = narrow[narrow.count / 2]
+        let mark = try XCTUnwrap(RibbonMark(page: oldPage))
+        let offset = try XCTUnwrap(mark.textOffset)
+        for size in [(48, 24), (18, 10), (70, 30)] {
+            let pages = JournalPager(charactersPerLine: size.0, linesPerPage: size.1).pages(for: [entry])
+            let index = try XCTUnwrap(JournalPager.pageIndex(of: entry.id, textOffset: offset, in: pages))
+            let block = try XCTUnwrap(pages[index].blocks.first)
+            XCTAssertLessThanOrEqual(block.textOffset, offset)
+            XCTAssertGreaterThan(block.textOffset + (block.text as NSString).length, offset)
+        }
+    }
+
 }

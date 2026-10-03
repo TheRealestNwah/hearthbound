@@ -39,7 +39,15 @@ final class IPadTests: XCTestCase {
         capture("ipad-large-text-dark-reader", app)
         quill.tap()
         XCTAssertTrue(app.textViews["entryBody"].waitForExistence(timeout: 15))
-        app.buttons["Cancel"].tap()
+        let body = app.textViews["entryBody"]
+        body.tap()
+        body.typeText("A readable page.")
+        XCTAssertTrue(app.buttons["Done"].isHittable)
+        XCTAssertTrue(app.buttons["Cancel"].isHittable)
+        XCTAssertTrue(app.textFields["inGameDate"].isHittable)
+        XCTAssertGreaterThan(body.frame.height, 80)
+        capture("ipad-large-text-writer", app)
+        app.buttons["Done"].tap()
         XCTAssertTrue(quill.waitForExistence(timeout: 15))
     }
 
@@ -75,5 +83,54 @@ final class IPadTests: XCTestCase {
         wait(for: [single], timeout: 15)
         XCTAssertFalse(app.buttons["Previous page"].isEnabled)
     }
+    func testRotationPreservesAManuallyChosenPassage() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-demoData", "-longDemoData", "-onboarding.completed", "YES"]
+        app.launch()
+        let journal = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Eira Stormborn")).firstMatch
+        XCTAssertTrue(journal.waitForExistence(timeout: 20))
+        journal.tap()
+        app.buttons["contents"].tap()
+        let first = app.buttons.matching(identifier: "contentsEntry").firstMatch
+        XCTAssertTrue(first.waitForExistence(timeout: 15))
+        first.tap()
+        let next = app.buttons["Next page"]
+        XCTAssertTrue(next.waitForExistence(timeout: 15))
+        next.tap()
+        let turned = expectation(for: NSPredicate(format: "label BEGINSWITH %@", "page 2 of"), evaluatedWith: app.staticTexts["pagePosition"])
+        wait(for: [turned], timeout: 15)
+        let passage = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Milestone")).firstMatch
+        XCTAssertTrue(passage.waitForExistence(timeout: 15))
+        let text = passage.label
+        let expression = try NSRegularExpression(pattern: "Milestone [0-9]+\\.")
+        let match = try XCTUnwrap(expression.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)))
+        let marker = (text as NSString).substring(with: match.range)
+        XCUIDevice.shared.orientation = .landscapeLeft
+        let landscape = expectation(for: NSPredicate { _, _ in app.frame.width > app.frame.height }, evaluatedWith: app)
+        wait(for: [landscape], timeout: 15)
+        let retained = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", marker)).firstMatch
+        XCTAssertTrue(retained.waitForExistence(timeout: 15))
+        XCTAssertTrue(retained.isHittable)
+        // This passage moves into the first landscape spread. Cached UIKit hosts must
+        // show that spread's opening too, rather than stale text with a new page number.
+        let spread = expectation(for: NSPredicate(format: "label BEGINSWITH %@", "pages 1–2"), evaluatedWith: app.staticTexts["pagePosition"])
+        wait(for: [spread], timeout: 15)
+        let opening = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "The cart ride ended")).firstMatch
+        XCTAssertTrue(opening.waitForExistence(timeout: 15))
+        XCTAssertTrue(opening.isHittable)
+        let quill = app.buttons["Write a new entry"]
+        // The dedicated writing area must sit below the page viewport, not over its text.
+        let viewport = app.scrollViews.matching(identifier: "pageViewport").firstMatch
+        XCTAssertTrue(viewport.exists)
+        XCTAssertGreaterThanOrEqual(quill.frame.minY, viewport.frame.maxY)
+        capture("ipad-reflow-middle-passage", app)
+        XCUIDevice.shared.orientation = .portrait
+        let restoredPage = expectation(for: NSPredicate(format: "label BEGINSWITH %@", "page 2 of"), evaluatedWith: app.staticTexts["pagePosition"])
+        wait(for: [restoredPage], timeout: 15)
+        XCTAssertTrue(retained.waitForExistence(timeout: 15))
+        XCTAssertTrue(retained.isHittable)
+        capture("ipad-reflow-return-to-portrait", app)
+    }
+
 }
 #endif
