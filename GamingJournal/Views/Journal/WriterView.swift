@@ -16,6 +16,11 @@ struct WriterView: View {
     @State private var unfinished: DraftShelf.Saved?
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var isLoadingPhotos = false
+    @State private var photosLoaded = 0
+    @State private var photosTotal = 0
+    @State private var errorMessage: String?
+    @State private var isConfirmingKeep = false
+    @State private var failNextSave = LaunchOptions.isUITesting && ProcessInfo.processInfo.arguments.contains("-failNextSave")
     @State private var isShowingCamera = false
     @State private var isImportingPhotos = false
     @FocusState private var bodyFocused: Bool
@@ -44,56 +49,61 @@ struct WriterView: View {
                     unfinishedOffer(unfinished)
                 }
 
-                TextField("In-game date", text: $draft.inGameDate, prompt: Text("In-game date, e.g. 17th of Last Seed").foregroundStyle(Theme.fadedInk.opacity(0.7)))
-                    .font(Theme.dateLine)
-                    .foregroundStyle(Theme.rubric)
-                    .capitalizedWords()
-                    .accessibilityIdentifier("inGameDate")
-                    .submitLabel(.next)
-                    .onSubmit { placeFocused = true }
-                TextField("Place", text: $draft.place, prompt: Text("Where, e.g. Whiterun").foregroundStyle(Theme.fadedInk.opacity(0.7)))
-                    .font(Theme.bookItalic(17, relativeTo: .subheadline))
-                    .foregroundStyle(Theme.fadedInk)
-                    .capitalizedWords()
-                    .accessibilityIdentifier("place")
-                    .focused($placeFocused)
-                    .submitLabel(.next)
-                    .onSubmit { bodyFocused = true }
-                    .padding(.top, 2)
-                if let next = InGameDate.nextDay(after: draft.inGameDate) {
-                    nextDayButton(next)
-                        .padding(.top, 4)
-                }
-
-                ZStack(alignment: .topLeading) {
-                    if draft.body.isEmpty {
-                        Text("Dear journal…")
-                            .font(Theme.bookItalic(fontSize))
-                            .foregroundStyle(Theme.fadedInk.opacity(0.7))
-                            .padding(.top, 8)
-                            .padding(.leading, 5)
-                            .accessibilityHidden(true)
+                Group {
+                    TextField("In-game date", text: $draft.inGameDate, prompt: Text("In-game date, e.g. 17th of Last Seed").foregroundStyle(Theme.fadedInk.opacity(0.7)))
+                        .font(Theme.dateLine)
+                        .foregroundStyle(Theme.rubric)
+                        .capitalizedWords()
+                        .accessibilityIdentifier("inGameDate")
+                        .submitLabel(.next)
+                        .onSubmit { placeFocused = true }
+                    TextField("Place", text: $draft.place, prompt: Text("Where, e.g. Whiterun").foregroundStyle(Theme.fadedInk.opacity(0.7)))
+                        .font(Theme.bookItalic(17, relativeTo: .subheadline))
+                        .foregroundStyle(Theme.fadedInk)
+                        .capitalizedWords()
+                        .accessibilityIdentifier("place")
+                        .focused($placeFocused)
+                        .submitLabel(.next)
+                        .onSubmit { bodyFocused = true }
+                        .padding(.top, 2)
+                    if let next = InGameDate.nextDay(after: draft.inGameDate) {
+                        nextDayButton(next)
+                            .padding(.top, 4)
                     }
-                    TextEditor(text: $draft.body)
-                        .font(Theme.book(fontSize))
-                        .lineSpacing(fontSize * 0.22)
-                        .foregroundStyle(Theme.ink)
-                        .scrollContentBackground(.hidden)
-                        .focused($bodyFocused)
-                        .accessibilityLabel("Entry")
-                        .accessibilityIdentifier("entryBody")
-                }
-                .padding(.top, 8)
 
-                if !draft.photos.isEmpty {
-                    photoStrip
+                    ZStack(alignment: .topLeading) {
+                        if draft.body.isEmpty {
+                            Text("Dear journal…")
+                                .font(Theme.bookItalicFixed(fontSize))
+                                .foregroundStyle(Theme.fadedInk.opacity(0.7))
+                                .padding(.top, 8)
+                                .padding(.leading, 5)
+                                .accessibilityHidden(true)
+                        }
+                        TextEditor(text: $draft.body)
+                            .font(Theme.bookFixed(fontSize))
+                            .lineSpacing(fontSize * 0.22)
+                            .foregroundStyle(Theme.ink)
+                            .scrollContentBackground(.hidden)
+                            .focused($bodyFocused)
+                            .accessibilityLabel("Entry")
+                            .accessibilityIdentifier("entryBody")
+                    }
+                    .padding(.top, 8)
+
+                    if !draft.photos.isEmpty {
+                        photoStrip
+                    }
+                    tools
                 }
-                tools
+                .disabled(unfinished != nil)
+                draftStatus
             }
             .padding(.horizontal, 28)
             .frame(maxWidth: 640)
             .frame(maxWidth: .infinity)
         }
+        .journalCommandActions(JournalCommandActions())
         .tint(Theme.rubric)
         .onAppear {
             if entry == nil && unfinished == nil { bodyFocused = true }
@@ -107,7 +117,12 @@ struct WriterView: View {
         .journalCover(isPresented: $isShowingCamera) {
             CameraPicker { image in
                 isShowingCamera = false
-                if let image { Task { await add(image) } }
+                if let image {
+                    isLoadingPhotos = true
+                    photosLoaded = 0
+                    photosTotal = 1
+                    Task { await add(image) }
+                }
             }
             .ignoresSafeArea()
         }
@@ -115,13 +130,30 @@ struct WriterView: View {
         .interactiveDismissDisabled()
         #if os(macOS)
         .fileImporter(isPresented: $isImportingPhotos, allowedContentTypes: [.image], allowsMultipleSelection: true) { result in
-            guard case .success(let urls) = result else { return }
-            Task { await loadFiles(urls) }
+            switch result {
+            case .success(let urls): loadFiles(urls)
+            case .failure(let error):
+                if !FileOperation.isCancellation(error) { errorMessage = error.localizedDescription }
+            }
+        }
+        #endif
+        .alert("Could not complete the action", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
+            Button("OK", role: .cancel) { errorMessage = nil }
+        } message: { Text(errorMessage ?? "") }
+        .confirmationDialog("Keep the words without pictures?", isPresented: $isConfirmingKeep, titleVisibility: .visible) {
+            Button("Keep Words") { keepDraft() }
+            Button("Keep Writing", role: .cancel) { }
+        } message: { Text("Pictures are only kept when you save the entry. You'll need to add them again when you resume this draft.") }
+        #if os(macOS)
+        .dropDestination(for: URL.self) { urls, _ in
+            guard !isLoadingPhotos, unfinished == nil, !urls.isEmpty else { return false }
+            loadFiles(urls)
+            return true
         }
         #endif
         .onChange(of: pickerItems) { _, items in
             guard !items.isEmpty else { return }
-            Task { await load(items) }
+            load(items)
         }
     }
 
@@ -130,8 +162,10 @@ struct WriterView: View {
     private var topBar: some View {
         HStack {
             Button("Cancel", systemImage: "xmark") {
-                if draft == original { discard() } else { isConfirmingDiscard = true }
+                if draft == original || unfinished != nil { discard() } else { isConfirmingDiscard = true }
             }
+            .help("Cancel writing")
+            .disabled(isLoadingPhotos)
             .confirmationDialog("Discard this page?", isPresented: $isConfirmingDiscard, titleVisibility: .visible) {
                 Button("Discard Page", role: .destructive, action: discard)
                 Button("Keep Writing", role: .cancel) {}
@@ -139,9 +173,20 @@ struct WriterView: View {
                 Text(entry == nil ? "What you've written here will be lost." : "Your changes to this entry will be lost.")
             }
             Spacer()
+            if entry == nil && unfinished == nil {
+                Button("Keep Draft", systemImage: "bookmark") {
+                    if draft.photos.isEmpty { keepDraft() } else { isConfirmingKeep = true }
+                }
+                .labelStyle(.titleAndIcon)
+                .font(Theme.bookItalic(14, relativeTo: .footnote))
+                .disabled(isLoadingPhotos || draft.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .help("Keep these words to finish later")
+                .accessibilityIdentifier("keepDraft")
+            }
             Button("Done", systemImage: "checkmark", action: save)
                 .fontWeight(.semibold)
-                .disabled(!draft.isValid)
+                .disabled(!draft.isValid || isLoadingPhotos || unfinished != nil)
+                .help("Save entry (Command-Return on Mac)")
                 #if os(macOS)
                 .keyboardShortcut(.return, modifiers: .command)
                 #endif
@@ -195,6 +240,7 @@ struct WriterView: View {
                 Label("Add a picture", systemImage: "photo")
             }
             .disabled(isLoadingPhotos)
+            .help("Add pictures from Photos")
             #if os(iOS)
             if CameraPicker.isAvailable {
                 Button {
@@ -208,11 +254,24 @@ struct WriterView: View {
             #if os(macOS)
             Button("Add picture from file", systemImage: "folder") { isImportingPhotos = true }
                 .disabled(isLoadingPhotos)
+                .help("Add picture files, or drop them onto this page")
             #endif
             if isLoadingPhotos {
                 ProgressView()
-                    .accessibilityLabel("Adding pictures")
+                Text("Adding pictures \(photosLoaded) of \(photosTotal)…")
+                    .font(Theme.bookItalic(14, relativeTo: .footnote))
+                    .accessibilityIdentifier("photoImportProgress")
             }
+            #if DEBUG
+            if LaunchOptions.isUITesting && ProcessInfo.processInfo.arguments.contains("-delayedPhotoImport") {
+                Button("Test picture import") {
+                    beginImport([PictureImport.Source(name: "Unreadable picture", read: {
+                        try await Task.sleep(for: .seconds(3))
+                        return Data()
+                    })])
+                }.disabled(isLoadingPhotos)
+            }
+            #endif
             Spacer(minLength: 0)
         }
         .labelStyle(.iconOnly)
@@ -253,23 +312,54 @@ struct WriterView: View {
         .padding(.bottom, 14)
     }
 
+    private var draftStatus: some View {
+        Text(unfinished != nil ? "Choose whether to continue the unfinished page before writing." :
+             entry != nil ? "Changes are kept when you save this entry." :
+             draft.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Drafts keep words on this device. Save the entry to keep pictures." :
+             "Words kept as a draft on this device. Save the entry to keep pictures.")
+            .font(Theme.bookItalic(12, relativeTo: .caption))
+            .foregroundStyle(Theme.fadedInk)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.bottom, 8)
+            .accessibilityIdentifier("draftStatus")
+    }
+
     #if os(macOS)
-    private func loadFiles(_ urls: [URL]) async {
+    private func loadFiles(_ urls: [URL]) {
+        beginImport(urls.map { url in
+            PictureImport.Source(name: url.lastPathComponent, read: {
+                try await Task.detached {
+                    let scoped = url.startAccessingSecurityScopedResource()
+                    defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+                    return try Data(contentsOf: url)
+                }.value
+            })
+        })
+    }
+    #endif
+
+    private func beginImport(_ sources: [PictureImport.Source]) {
+        guard !isLoadingPhotos, unfinished == nil, !sources.isEmpty else { return }
+        // Set before scheduling the task: even an immediate Save cannot race the import.
         isLoadingPhotos = true
-        defer { isLoadingPhotos = false }
-        for url in urls {
-            let processed = await Task.detached {
-                let scoped = url.startAccessingSecurityScopedResource()
-                defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-                guard let data = try? Data(contentsOf: url) else { return nil as PhotoProcessor.Processed? }
-                return PhotoProcessor.process(data)
-            }.value
-            if let processed {
-                draft.photos.append(DraftPhoto(imageData: processed.imageData, thumbnailData: processed.thumbnailData))
+        photosLoaded = 0
+        photosTotal = sources.count
+        Task { @MainActor in
+            let report = await PictureImport.load(sources) { photosLoaded = $0 }
+            draft.photos.append(contentsOf: report.photos)
+            pickerItems = []
+            isLoadingPhotos = false
+            if !report.failures.isEmpty {
+                errorMessage = "Couldn't add: " + report.failures.joined(separator: ", ") + ". Try another picture or download it to this device first. Your other pictures and writing are still here."
             }
         }
     }
-    #endif
+
+    private func keepDraft() {
+        guard entry == nil, unfinished == nil, !isLoadingPhotos else { return }
+        drafts.keep(draft, for: journal.id)
+        dismiss()
+    }
 
     // MARK: Actions
 
@@ -279,43 +369,39 @@ struct WriterView: View {
     }
 
     private func save() {
-        if let entry {
-            draft.apply(to: entry, in: journal)
-        } else {
-            // A new entry is filed under today, even if it was started on an earlier day. A copy,
-            // so the change doesn't put the saved page back on the draft shelf.
-            var page = draft
-            page.writtenAt = .now
-            let entry = Entry()
-            context.insert(entry)
-            page.apply(to: entry, in: journal)
-            drafts.discard(for: journal.id)
+        guard draft.isValid, !isLoadingPhotos, unfinished == nil else { return }
+        do {
+            try JournalStore.save(draft, entry: entry, in: journal, context: context, drafts: drafts) { context in
+                if failNextSave {
+                    failNextSave = false
+                    throw CocoaError(.fileWriteOutOfSpace)
+                }
+                try context.save()
+            }
+            dismiss()
+        } catch {
+            errorMessage = "Your entry could not be saved. Your writing is still here; try again. " + error.localizedDescription
         }
-        try? context.save()
-        dismiss()
     }
 
     #if os(iOS)
     private func add(_ image: PlatformImage) async {
-        isLoadingPhotos = true
         defer { isLoadingPhotos = false }
-        guard let processed = await Task.detached(operation: { PhotoProcessor.process(image) }).value else { return }
+        guard let processed = await Task.detached(operation: { PhotoProcessor.process(image) }).value else {
+            errorMessage = "This picture could not be added. Your writing is still here; try again."
+            return
+        }
         draft.photos.append(DraftPhoto(imageData: processed.imageData, thumbnailData: processed.thumbnailData))
     }
 
     #endif
 
-    private func load(_ items: [PhotosPickerItem]) async {
-        isLoadingPhotos = true
-        defer {
-            isLoadingPhotos = false
-            pickerItems = []
-        }
-        for item in items {
-            guard let data = try? await item.loadTransferable(type: Data.self),
-                  let processed = await Task.detached(operation: { PhotoProcessor.process(data) }).value
-            else { continue }
-            draft.photos.append(DraftPhoto(imageData: processed.imageData, thumbnailData: processed.thumbnailData))
-        }
+    private func load(_ items: [PhotosPickerItem]) {
+        beginImport(items.enumerated().map { index, item in
+            PictureImport.Source(name: "Picture \(index + 1)", read: {
+                guard let data = try await item.loadTransferable(type: Data.self) else { throw CocoaError(.fileReadUnknown) }
+                return data
+            })
+        })
     }
 }

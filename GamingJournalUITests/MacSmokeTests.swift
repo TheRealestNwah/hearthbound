@@ -3,11 +3,11 @@ import XCTest
 
 final class MacSmokeTests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
-    private func launch(demo: Bool = false) -> XCUIApplication {
+    private func launch(demo: Bool = false, arguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTesting", "YES", "-onboarding.completed", "YES",
             "-ApplePersistenceIgnoreState", "YES", "-NSTreatUnknownArgumentsAsOpen", "NO"]
-            + (demo ? ["-demoData", "YES"] : [])
+            + (demo ? ["-demoData", "YES"] : []) + arguments
         app.launch()
         app.activate()
         let opened = app.windows.buttons.matching(identifier: "Begin a new journal").firstMatch.waitForExistence(timeout: 20)
@@ -70,5 +70,48 @@ final class MacSmokeTests: XCTestCase {
         capture("mac-settings", app)
         app.windows.buttons.matching(identifier: "Close").firstMatch.click()
     }
+    func testMenuCommandsAndDraftRecoveryAfterFailedSave() {
+        let app = launch(demo: true, arguments: ["-failNextSave", "YES"])
+        app.typeKey(",", modifierFlags: .command)
+        XCTAssertTrue(app.windows.buttons.matching(identifier: "Export Backup").firstMatch.waitForExistence(timeout: 15))
+        app.windows.buttons.matching(identifier: "Close").firstMatch.click()
+        let journal = app.windows.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Eira Stormborn")).firstMatch
+        journal.click()
+        XCTAssertTrue(app.windows.buttons.matching(identifier: "Write a new entry").firstMatch.waitForExistence(timeout: 15))
+        app.typeKey("n", modifierFlags: .command)
+        let body = app.windows.textViews["entryBody"]
+        XCTAssertTrue(body.waitForExistence(timeout: 15))
+        body.click()
+        body.typeText("A Mac draft kept safe.")
+        app.windows.buttons.matching(identifier: "keepDraft").firstMatch.click()
+        let quill = app.windows.buttons.matching(identifier: "Write a new entry").firstMatch
+        XCTAssertTrue(quill.waitForExistence(timeout: 15))
+        quill.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+        let resume = app.windows.buttons.matching(identifier: "Carry on writing").firstMatch
+        XCTAssertTrue(resume.waitForExistence(timeout: 15))
+        XCTAssertFalse(app.windows.buttons.matching(identifier: "Done").firstMatch.isEnabled)
+        resume.click()
+        app.typeKey(XCUIKeyboardKey.return.rawValue, modifierFlags: .command)
+        let ok = app.windows.buttons.matching(identifier: "OK").firstMatch
+        XCTAssertTrue(ok.waitForExistence(timeout: 15))
+        ok.click()
+        XCTAssertEqual(body.value as? String, "A Mac draft kept safe.")
+        app.windows.buttons.matching(identifier: "Done").firstMatch.click()
+        XCTAssertTrue(app.windows.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "A Mac draft kept safe.")).firstMatch.waitForExistence(timeout: 15))
+        capture("qa-mac-saved-recovery", app)
+    }
+
+    func testUnavailablePictureExplainsItsState() {
+        let app = launch(demo: true, arguments: ["-missingPhoto", "YES"])
+        app.windows.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Eira Stormborn")).firstMatch.click()
+        let picture = app.windows.buttons.matching(identifier: "Photo 1 of 1").firstMatch
+        XCTAssertTrue(picture.waitForExistence(timeout: 15))
+        picture.click()
+        XCTAssertTrue(app.windows.staticTexts["Photo unavailable"].waitForExistence(timeout: 15))
+        capture("qa-mac-unavailable-picture", app)
+        app.windows.buttons.matching(identifier: "Close").firstMatch.click()
+        XCTAssertTrue(app.windows.buttons.matching(identifier: "Write a new entry").firstMatch.waitForExistence(timeout: 15))
+    }
+
 }
 #endif

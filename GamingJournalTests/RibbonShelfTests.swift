@@ -35,7 +35,17 @@ final class RibbonShelfTests: XCTestCase {
         let page = JournalPager.Page(index: 3, blocks: [
             JournalPager.Block(entryID: entryID, part: 1, showsHeading: false, heading: "Day 1", text: "…", showsPhotos: false),
         ])
-        XCTAssertEqual(RibbonMark(page: page), RibbonMark(entryID: entryID, part: 1))
+        XCTAssertEqual(RibbonMark(page: page), RibbonMark(entryID: entryID, part: 1, textOffset: 0))
         XCTAssertNil(RibbonMark(page: JournalPager.Page(index: 0, blocks: [])))
     }
+    func testOlderRibbonsStillDecodeAndNewOffsetsRoundTrip() throws {
+        let id = UUID()
+        let old = Data("{\"entryID\":\"\(id.uuidString)\",\"part\":3}".utf8)
+        let mark = try JSONDecoder().decode(RibbonMark.self, from: old)
+        XCTAssertEqual(mark.part, 3)
+        XCTAssertNil(mark.textOffset)
+        let located = RibbonMark(entryID: id, part: 3, textOffset: 271)
+        XCTAssertEqual(try JSONDecoder().decode(RibbonMark.self, from: JSONEncoder().encode(located)), located)
+    }
+
 }

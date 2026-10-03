@@ -80,6 +80,7 @@ struct ContentsView: View {
                 }
             }
         }
+        .journalCommandActions(JournalCommandActions())
         .tint(Theme.rubric)
         .journalSheetSize()
     }

@@ -8,6 +8,9 @@ struct ShelfView: View {
     @Query(sort: \Journal.updatedAt, order: .reverse) private var journals: [Journal]
     @Binding var path: [JournalRoute]
     @State private var isCreating = false
+    @State private var resuming: Journal?
+    @State private var draftRevision = 0
+    @State private var errorMessage: String?
     @State private var editing: Journal?
     @State private var pendingDelete: Journal?
     @State private var isShowingSettings = false
@@ -56,18 +59,30 @@ struct ShelfView: View {
                             toggleSearch()
                         }
                         .keyboardShortcut("f", modifiers: .command)
+                        .help("Search journals (Command-F)")
                     }
                     Button("Begin a new journal", systemImage: "plus") { isCreating = true }
                         .keyboardShortcut("n", modifiers: [.command, .shift])
+                        .help("Begin a new journal (Command-Shift-N)")
                     Button("Settings", systemImage: "gearshape") { isShowingSettings = true }
+                        .help("Settings (Command-comma)")
                 }
             }
             .tint(Theme.gold)
             .journalNavigationBackground()
             .navigationDestination(for: JournalRoute.self) { route in
-                JournalView(journal: route.journal, focusEntryID: route.entryID, highlight: route.highlight)
+                JournalView(journal: route.journal, focusEntryID: route.entryID, highlight: route.highlight,
+                            onSettings: { isShowingSettings = true }, onNewJournal: { isCreating = true })
             }
         }
+        .journalCommandActions(isCreating || editing != nil || isShowingSettings || resuming != nil ? JournalCommandActions() :
+            JournalCommandActions(settings: { isShowingSettings = true }, newJournal: { isCreating = true },
+                                  find: journals.isEmpty ? nil : { isSearching = true; searchFocused = true }))
+        .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in draftRevision += 1 }
+        .journalCover(item: $resuming) { journal in WriterView(journal: journal) }
+        .alert("Could not save the change", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
+            Button("OK", role: .cancel) { errorMessage = nil }
+        } message: { Text(errorMessage ?? "") }
         .sheet(isPresented: $isCreating) {
             JournalEditorView { journal in path = [JournalRoute(journal: journal)] }
         }
@@ -84,12 +99,13 @@ struct ShelfView: View {
             presenting: pendingDelete
         ) { journal in
             Button("Delete \(journal.characterName)'s journal", role: .destructive) {
-                path.removeAll { $0.journal.id == journal.id }
-                // Its unfinished page and ribbon live outside the store.
-                DraftShelf().discard(for: journal.id)
-                RibbonShelf().setMark(nil, for: journal.id)
-                context.delete(journal)
-                try? context.save()
+                let id = journal.id
+                do {
+                    try JournalStore.commit(in: context, restore: JournalStore.restoration(for: journal, includingEntries: true)) { context.delete(journal) }
+                    path.removeAll { $0.journal.id == id }
+                    DraftShelf().discard(for: id)
+                    RibbonShelf().setMark(nil, for: id)
+                } catch { errorMessage = "The journal could not be deleted. " + error.localizedDescription }
             }
         } message: { _ in
             Text("Every page in it is lost. This can't be undone.")
@@ -102,6 +118,7 @@ struct ShelfView: View {
     /// The journals on the shelf, or a pointer to + when there are none.
     @ViewBuilder
     private var books: some View {
+        let _ = draftRevision
         ForEach(journals) { journal in
             NavigationLink(value: JournalRoute(journal: journal)) {
                 ShelfBook(name: journal.characterName, subtitle: journal.subtitle, style: journal.coverStyle)
@@ -111,6 +128,16 @@ struct ShelfView: View {
             .contextMenu {
                 Button("Edit", systemImage: "pencil") { editing = journal }
                 Button("Delete", systemImage: "trash", role: .destructive) { pendingDelete = journal }
+            }
+            if let saved = DraftShelf().saved(for: journal.id) {
+                Button { resuming = journal } label: {
+                    Label("Continue unfinished page", systemImage: "bookmark")
+                        .font(Theme.bookItalic(16, relativeTo: .subheadline))
+                        .foregroundStyle(Theme.gold)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint(saved.preview)
+                .accessibilityIdentifier("resumeDraft")
             }
         }
         if journals.isEmpty {
@@ -152,6 +179,7 @@ struct JournalEditorView: View {
     @State private var gameTitle: String
     @State private var coverStyle: CoverStyle
     @FocusState private var nameFocused: Bool
+    @State private var errorMessage: String?
 
     init(journal: Journal? = nil, onCreate: ((Journal) -> Void)? = nil) {
         self.journal = journal
@@ -220,24 +248,31 @@ struct JournalEditorView: View {
         }
         .tint(Theme.rubric)
         .journalSheetSize()
+        .journalCommandActions(JournalCommandActions())
+        .alert("Could not save the journal", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
+            Button("OK", role: .cancel) { errorMessage = nil }
+        } message: { Text(errorMessage ?? "") }
     }
 
     private func save() {
-        if let journal {
-            journal.characterName = trimmedName
-            journal.epithet = epithet.trimmingCharacters(in: .whitespacesAndNewlines)
-            journal.gameTitle = gameTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-            journal.coverStyle = coverStyle
-            journal.touch()
-            try? context.save()
+        do {
+            let restore = journal.map { JournalStore.restoration(for: $0) } ?? {}
+            let saved = try JournalStore.commit(in: context, restore: restore) {
+                if let journal {
+                    journal.characterName = trimmedName
+                    journal.epithet = epithet.trimmingCharacters(in: .whitespacesAndNewlines)
+                    journal.gameTitle = gameTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+                    journal.coverStyle = coverStyle
+                    journal.touch()
+                    return journal
+                }
+                let created = Journal(characterName: trimmedName, epithet: epithet, gameTitle: gameTitle, coverStyle: coverStyle)
+                context.insert(created)
+                return created
+            }
             dismiss()
-        } else {
-            let journal = Journal(characterName: trimmedName, epithet: epithet, gameTitle: gameTitle, coverStyle: coverStyle)
-            context.insert(journal)
-            try? context.save()
-            dismiss()
-            onCreate?(journal)
-        }
+            if journal == nil { onCreate?(saved) }
+        } catch { errorMessage = "Your changes are still here. Try saving again. " + error.localizedDescription }
     }
 }
 

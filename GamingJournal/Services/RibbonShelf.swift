@@ -1,22 +1,25 @@
 import Foundation
 
-/// Where a journal's ribbon lies: the entry on the marked page and which part of it that page
-/// holds (0 where the entry starts, 1, 2… as it carries on). Marking the entry rather than a page
-/// number keeps the ribbon in place when entries are added or the text size changes.
+/// A bookmark in an entry's source text. Older records use layout-dependent part numbers;
+/// new records include a UTF-16 offset so resizing and text-size changes keep the passage.
 struct RibbonMark: Codable, Equatable {
     var entryID: UUID
     var part: Int
+    /// Older ribbons only have a part number; newly placed ribbons use a stable source offset.
+    var textOffset: Int?
 
     /// The ribbon for the page a reader is on, or nil for a blank page.
     init?(page: JournalPager.Page) {
         guard let block = page.blocks.first else { return nil }
         entryID = block.entryID
         part = block.part
+        textOffset = block.textOffset
     }
 
-    init(entryID: UUID, part: Int) {
+    init(entryID: UUID, part: Int, textOffset: Int? = nil) {
         self.entryID = entryID
         self.part = part
+        self.textOffset = textOffset
     }
 }
 

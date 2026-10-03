@@ -43,7 +43,7 @@ struct GamingJournalApp: App {
         .defaultSize(width: 1100, height: 800)
         .commands {
             // Keep one journal workflow while using normal Mac launch/reopen behavior.
-            CommandGroup(replacing: .newItem) { }
+            JournalCommands()
             TextEditingCommands()
         }
         #else

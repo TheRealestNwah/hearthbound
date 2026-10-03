@@ -40,7 +40,7 @@ extension View {
         #if os(iOS)
         toolbar(.hidden, for: .navigationBar)
         #else
-        self
+        navigationBarBackButtonHidden(true)
         #endif
     }
     @ViewBuilder func capitalizedWords() -> some View {

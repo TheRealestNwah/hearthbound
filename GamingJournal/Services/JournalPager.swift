@@ -1,8 +1,9 @@
 import Foundation
+import CoreText
 
-/// Lays a journal's entries out on book pages. Space is measured in lines of roughly
-/// `charactersPerLine` characters, so pages fill like a printed book: an entry that doesn't fit
-/// carries on over the page, and a date heading is never left alone at the foot of a page.
+/// Lays journal entries onto book pages using the bundled font's measured line breaks.
+/// Source slices preserve every character and provide stable locations when pages reflow.
+/// The character-capacity initializer supports deterministic non-rendering tests.
 struct JournalPager {
     /// What goes onto the pages, in reading order.
     struct Item: Equatable {
@@ -26,6 +27,8 @@ struct JournalPager {
         var text: String
         /// The entry's pictures follow its last words.
         var showsPhotos: Bool
+        /// UTF-16 offset in the original entry body, stable across page sizes.
+        var textOffset: Int = 0
 
         var id: String { "\(entryID)-\(part)" }
     }
@@ -49,6 +52,8 @@ struct JournalPager {
 
     var charactersPerLine: Int
     var linesPerPage: Int
+    private var measuredWidth: Double?
+    private var measuredFontSize: Double = 19
 
     init(charactersPerLine: Int, linesPerPage: Int) {
         self.charactersPerLine = max(8, charactersPerLine)
@@ -64,6 +69,8 @@ struct JournalPager {
             charactersPerLine: Int(width / (fontSize * 0.48)),
             linesPerPage: Int(height / (fontSize * 1.42))
         )
+        measuredWidth = max(1, width)
+        measuredFontSize = fontSize
     }
 
     /// The pages for `items`; always at least one, so an empty journal still opens on a page.
@@ -79,67 +86,53 @@ struct JournalPager {
         }
 
         for item in items {
-            let paragraphs = Self.paragraphs(in: item.body)
-            // Keep the heading with at least a couple of lines of what follows, or with the
-            // pictures when there are no words.
-            let keptLines = paragraphs.first.map { min(2, lineCount(of: $0)) } ?? (item.hasPhotos ? Self.photoLines : 0)
+            let source = item.body as NSString
+            let lines = sourceLines(in: item.body)
+            let keptLines = lines.isEmpty ? (item.hasPhotos ? Self.photoLines : 0) : min(2, lines.count)
             let gap = blocks.isEmpty ? 0 : Self.entryGap
             let headingLines = Self.headingLines + (item.place.isEmpty ? 0 : Self.placeLines)
             if !blocks.isEmpty && used + gap + headingLines + keptLines > linesPerPage {
                 turnPage()
             }
             used += (blocks.isEmpty ? 0 : Self.entryGap) + headingLines
-
             var showsHeading = true
             var part = 0
-            var pieces: [String] = []
+            var start = 0
+            var end = 0
 
             func placeBlock(showsPhotos: Bool) {
-                blocks.append(Block(
-                    entryID: item.id,
-                    part: part,
-                    showsHeading: showsHeading,
-                    heading: item.heading,
-                    place: item.place,
-                    text: pieces.joined(separator: "\n"),
-                    showsPhotos: showsPhotos
-                ))
+                blocks.append(Block(entryID: item.id, part: part, showsHeading: showsHeading,
+                                    heading: item.heading, place: item.place,
+                                    text: source.substring(with: NSRange(location: start, length: end - start)),
+                                    showsPhotos: showsPhotos, textOffset: start))
                 showsHeading = false
                 part += 1
-                pieces = []
+                start = end
             }
 
-            for paragraph in paragraphs {
-                var lines = wrap(paragraph)
-                while !lines.isEmpty {
-                    let available = linesPerPage - used
-                    if lines.count <= available {
-                        pieces.append(lines.joined(separator: " "))
-                        used += lines.count
-                        lines = []
-                    } else {
-                        if available > 0 {
-                            pieces.append(lines.prefix(available).joined(separator: " "))
-                            lines.removeFirst(available)
-                        }
-                        if !pieces.isEmpty || showsHeading {
-                            placeBlock(showsPhotos: false)
-                        }
-                        turnPage()
-                    }
-                }
-            }
-
-            if item.hasPhotos && used + Self.photoLines > linesPerPage {
-                if !pieces.isEmpty || showsHeading {
+            var cursor = 0
+            while cursor < lines.count {
+                let available = linesPerPage - used
+                if available <= 0 {
                     placeBlock(showsPhotos: false)
+                    turnPage()
+                    continue
                 }
+                let count = min(available, lines.count - cursor)
+                end = lines[cursor + count - 1].upperBound
+                cursor += count
+                used += count
+                if cursor < lines.count {
+                    placeBlock(showsPhotos: false)
+                    turnPage()
+                }
+            }
+            if item.hasPhotos && used + Self.photoLines > linesPerPage {
+                if end > start || showsHeading { placeBlock(showsPhotos: false) }
                 turnPage()
             }
-            if item.hasPhotos {
-                used += Self.photoLines
-            }
-            if !pieces.isEmpty || showsHeading || item.hasPhotos {
+            if item.hasPhotos { used += Self.photoLines }
+            if end > start || showsHeading || item.hasPhotos {
                 placeBlock(showsPhotos: item.hasPhotos)
             }
         }
@@ -172,6 +165,13 @@ struct JournalPager {
         pages.last { page in page.blocks.contains { $0.entryID == entryID && $0.part <= part } }?.index
     }
 
+    /// Resolve an original text location after reflow. Empty/photo-only tails also have offsets.
+    static func pageIndex(of entryID: UUID, textOffset: Int, in pages: [Page]) -> Int? {
+        pages.last { page in
+            page.blocks.contains { $0.entryID == entryID && $0.textOffset <= textOffset }
+        }?.index
+    }
+
     /// The page each entry starts on, for a table of contents.
     static func startPages(in pages: [Page]) -> [UUID: Int] {
         var starts: [UUID: Int] = [:]
@@ -184,6 +184,56 @@ struct JournalPager {
     }
 
     // MARK: Measuring
+
+    /// Keep source slices, including whitespace: synthetic line breaks must never change words.
+    /// Core Text measures the same bundled face used by the reader. The character-capacity
+    /// initializer stays deterministic for unit tests and callers without a rendered page size.
+    private func sourceLines(in text: String) -> [Range<Int>] {
+        if let width = measuredWidth {
+            let font = CTFontCreateWithName("IM_FELL_English_Roman" as CFString, measuredFontSize, nil)
+            let attributed = NSAttributedString(string: text, attributes: [
+                NSAttributedString.Key(kCTFontAttributeName as String): font
+            ])
+            let typesetter = CTTypesetterCreateWithAttributedString(attributed as CFAttributedString)
+            let length = (text as NSString).length
+            var cursor = 0
+            var result: [Range<Int>] = []
+            while cursor < length {
+                let suggested = CTTypesetterSuggestLineBreak(typesetter, cursor, width)
+                let count = suggested > 0 ? suggested : (text as NSString).rangeOfComposedCharacterSequence(at: cursor).length
+                let end = min(length, cursor + count)
+                result.append(cursor..<end)
+                cursor = end
+            }
+            return result
+        }
+        var result: [Range<Int>] = []
+        var start = text.startIndex
+        while start < text.endIndex {
+            var end = start
+            var lastSpace: String.Index?
+            var count = 0
+            while end < text.endIndex && count < charactersPerLine {
+                let character = text[end]
+                end = text.index(after: end)
+                count += 1
+                if character.isWhitespace { lastSpace = end }
+                if character.isNewline { break }
+            }
+            if end < text.endIndex, !text[text.index(before: end)].isNewline,
+               !text[end].isWhitespace, let space = lastSpace {
+                end = space
+            }
+            // Trailing spaces belong to this slice, but must not use the next line's capacity.
+            while end < text.endIndex, text[end].isWhitespace, !text[end].isNewline,
+                  !text[text.index(before: end)].isNewline {
+                end = text.index(after: end)
+            }
+            result.append(start.utf16Offset(in: text)..<end.utf16Offset(in: text))
+            start = end
+        }
+        return result
+    }
 
     static func paragraphs(in text: String) -> [String] {
         text.components(separatedBy: .newlines)
