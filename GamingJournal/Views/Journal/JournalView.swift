@@ -57,7 +57,7 @@ struct JournalView: View {
     }
 
     private struct TornOut: Equatable {
-        let record: JournalBackup.EntryRecord
+        let record: EntrySnapshot
         let heading: String
     }
 
@@ -435,7 +435,7 @@ struct JournalView: View {
 
     /// Deletes an entry, keeping a copy (pictures included) for a few seconds so Undo can put it back.
     private func tearOut(_ entry: Entry) {
-        let copy = TornOut(record: JournalBackup.EntryRecord(entry: entry), heading: entry.heading())
+        let copy = TornOut(record: EntrySnapshot(entry: entry), heading: entry.heading())
         do {
             try JournalStore.commit(in: context, restore: JournalStore.restoration(for: journal, includingEntries: true)) {
                 journal.touch()
