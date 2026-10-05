@@ -37,20 +37,37 @@ final class BackupTests: XCTestCase {
         XCTAssertEqual(imported.story.first?.sortedPhotos.first?.thumbnailData, Data([4]))
     }
 
-    func testPhotoMissingItsFullImageIsBackedUpByItsThumbnail() throws {
+    func testBackupRefusesUnavailableOriginalsWithoutChangingPhotos() throws {
         let context = try makeContext()
         let journal = sampleJournal(in: context)
-        journal.story.first?.photos?.first?.imageData = nil
-        let backup = JournalBackup(exporting: [journal])
-        let photos = try XCTUnwrap(backup.journals.first?.entries.first?.photos)
-        XCTAssertEqual(photos.count, 1)
-        XCTAssertEqual(photos.first?.imageData, Data([4]))
+        let entry = try XCTUnwrap(journal.story.first)
+        let photo = try XCTUnwrap(entry.photos?.first)
+        // Thumbnail-only, entirely unavailable, and empty original bytes must all stop export.
+        let unavailable: [(Data?, Data?)] = [(nil, Data([4])), (nil, nil), (Data(), Data([4]))]
+        for (image, thumbnail) in unavailable {
+            photo.imageData = image
+            photo.thumbnailData = thumbnail
+            let before = EntrySnapshot(entry: entry)
+            XCTAssertThrowsError(try JournalBackup(exporting: [journal]).encoded()) { error in
+                XCTAssertEqual(error as? JournalBackup.BackupError, .unavailablePhoto)
+            }
+            XCTAssertEqual(EntrySnapshot(entry: entry), before)
+        }
+
+        // Export works again once the original is available, even without a thumbnail.
+        photo.imageData = Data([1, 2, 3])
+        photo.thumbnailData = nil
+        let backup = try JournalBackup.decode(JournalBackup(exporting: [journal]).encoded())
+        let restored = try XCTUnwrap(backup.journals.first?.entries.first).makeEntry()
+        XCTAssertEqual(restored.sortedPhotos.map(\.id), [photo.id])
+        XCTAssertEqual(restored.sortedPhotos.first?.imageData, Data([1, 2, 3]))
+        XCTAssertNil(restored.sortedPhotos.first?.thumbnailData)
     }
 
     func testImportingTwiceAddsNothing() throws {
         let context = try makeContext()
         let journal = sampleJournal(in: context)
-        let backup = JournalBackup(exporting: [journal])
+        let backup = try JournalBackup(exporting: [journal])
         let report = try JournalImporter.importBackup(backup, into: context)
         XCTAssertEqual(report.journalsAdded, 0)
         XCTAssertEqual(report.entriesAdded, 0)
@@ -64,7 +81,7 @@ final class BackupTests: XCTestCase {
         let journal = sampleJournal(in: context)
         let original = try XCTUnwrap(journal.story.first)
         original.place = "Helgen"
-        let record = JournalBackup.EntryRecord(entry: original)
+        let record = EntrySnapshot(entry: original)
         try context.save()
         context.delete(original)
         try context.save()
@@ -75,7 +92,7 @@ final class BackupTests: XCTestCase {
         context.insert(restored)
         restored.journal = journal
         try context.save()
-        XCTAssertEqual(JournalBackup.EntryRecord(entry: restored), record)
+        XCTAssertEqual(EntrySnapshot(entry: restored), record)
         XCTAssertEqual(journal.story.map(\.id), [record.id])
         XCTAssertEqual(try context.fetchCount(FetchDescriptor<EntryPhoto>()), 1)
     }
@@ -83,7 +100,7 @@ final class BackupTests: XCTestCase {
     func testNewEntriesJoinAJournalAlreadyPresent() throws {
         let context = try makeContext()
         let journal = sampleJournal(in: context)
-        var backup = JournalBackup(exporting: [journal])
+        var backup = try JournalBackup(exporting: [journal])
         backup.journals[0].entries.append(JournalBackup.EntryRecord(
             id: UUID(), body: "Riverwood.", inGameDate: "17th of Last Seed",
             writtenAt: .now, createdAt: .now, updatedAt: .now, photos: []
@@ -98,7 +115,7 @@ final class BackupTests: XCTestCase {
         let journal = sampleJournal(in: context)
         journal.updatedAt = .distantPast
         let later = Date(timeIntervalSince1970: 2_000_000_000)
-        var backup = JournalBackup(exporting: [journal])
+        var backup = try JournalBackup(exporting: [journal])
         backup.journals[0].entries.append(JournalBackup.EntryRecord(
             id: UUID(), body: "Whiterun.", inGameDate: "",
             writtenAt: later, createdAt: later, updatedAt: later, photos: []

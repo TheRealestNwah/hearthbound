@@ -42,6 +42,7 @@ struct JournalBackup: Codable, Equatable {
         case unsupportedVersion(Int)
         case olderFormat
         case unreadable
+        case unavailablePhoto
 
         var errorDescription: String? {
             switch self {
@@ -51,6 +52,8 @@ struct JournalBackup: Codable, Equatable {
                 "This backup is from before Hearthbound kept one journal per character, so it can't be imported."
             case .unreadable:
                 "This file isn't a Hearthbound backup."
+            case .unavailablePhoto:
+                "A picture's original image isn't available on this device, so a complete backup can't be made. Download the missing picture and try again. Your journals haven't been changed."
             }
         }
     }
@@ -65,10 +68,10 @@ struct JournalBackup: Codable, Equatable {
         self.journals = journals
     }
 
-    init(exporting journals: [Journal], exportedAt: Date = .now) {
+    init(exporting journals: [Journal], exportedAt: Date = .now) throws {
         self.init(
             exportedAt: exportedAt,
-            journals: journals.sorted { $0.createdAt < $1.createdAt }.map(JournalRecord.init(journal:))
+            journals: try journals.sorted { $0.createdAt < $1.createdAt }.map(JournalRecord.init(journal:))
         )
     }
 
@@ -120,7 +123,7 @@ struct JournalBackup: Codable, Equatable {
 }
 
 extension JournalBackup.JournalRecord {
-    init(journal: Journal) {
+    init(journal: Journal) throws {
         id = journal.id
         characterName = journal.characterName
         epithet = journal.epithet
@@ -128,7 +131,7 @@ extension JournalBackup.JournalRecord {
         coverStyle = journal.coverStyleRaw
         createdAt = journal.createdAt
         updatedAt = journal.updatedAt
-        entries = journal.story.map(JournalBackup.EntryRecord.init(entry:))
+        entries = try journal.story.map(JournalBackup.EntryRecord.init(entry:))
     }
 
     /// A new, unsaved journal with the same values and ID, without its entries.
@@ -147,7 +150,7 @@ extension JournalBackup.JournalRecord {
 }
 
 extension JournalBackup.EntryRecord {
-    init(entry: Entry) {
+    init(entry: Entry) throws {
         id = entry.id
         body = entry.body
         inGameDate = entry.inGameDate
@@ -155,9 +158,11 @@ extension JournalBackup.EntryRecord {
         writtenAt = entry.writtenAt
         createdAt = entry.createdAt
         updatedAt = entry.updatedAt
-        photos = entry.sortedPhotos.compactMap { photo -> JournalBackup.Photo? in
-            // A photo missing its full image (not downloaded yet, or damaged) keeps its thumbnail.
-            guard let image = photo.imageData ?? photo.thumbnailData else { return nil }
+        photos = try entry.sortedPhotos.map { photo in
+            // A full backup must never silently omit pictures or replace originals with thumbnails.
+            guard let image = photo.imageData, !image.isEmpty else {
+                throw JournalBackup.BackupError.unavailablePhoto
+            }
             return JournalBackup.Photo(
                 id: photo.id,
                 imageData: image,
@@ -204,38 +209,43 @@ enum JournalImporter {
 
     /// Adds new journals whole; for journals already present, adds just the entries that are new.
     @MainActor
-    static func importBackup(_ backup: JournalBackup, into context: ModelContext) throws -> Report {
-        var report = Report()
+    static func importBackup(_ backup: JournalBackup, into context: ModelContext,
+                             persist: (ModelContext) throws -> Void = { try $0.save() }) throws -> Report {
         let existing = try context.fetch(FetchDescriptor<Journal>())
-        var journalsByID = Dictionary(existing.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        var knownEntryIDs = Set(try context.fetch(FetchDescriptor<Entry>()).map(\.id))
+        let restorations = existing.map { JournalStore.restoration(for: $0) }
+        return try JournalStore.commit(in: context, save: persist, restore: {
+            for restore in restorations { restore() }
+        }) {
+            var report = Report()
+            var journalsByID = Dictionary(existing.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+            var knownEntryIDs = Set(try context.fetch(FetchDescriptor<Entry>()).map(\.id))
 
-        for record in backup.journals {
-            let journal: Journal
-            if let present = journalsByID[record.id] {
-                journal = present
-            } else {
-                journal = record.makeJournal()
-                context.insert(journal)
-                journalsByID[record.id] = journal
-                report.journalsAdded += 1
-            }
-            for entryRecord in record.entries {
-                guard knownEntryIDs.insert(entryRecord.id).inserted else {
-                    report.skipped += 1
-                    continue
+            for record in backup.journals {
+                let journal: Journal
+                if let present = journalsByID[record.id] {
+                    journal = present
+                } else {
+                    journal = record.makeJournal()
+                    context.insert(journal)
+                    journalsByID[record.id] = journal
+                    report.journalsAdded += 1
                 }
-                let entry = entryRecord.makeEntry()
-                context.insert(entry)
-                entry.journal = journal
-                report.entriesAdded += 1
-                // The shelf is ordered by this, so a journal that gained entries moves up.
-                if entry.updatedAt > journal.updatedAt {
-                    journal.updatedAt = entry.updatedAt
+                for entryRecord in record.entries {
+                    guard knownEntryIDs.insert(entryRecord.id).inserted else {
+                        report.skipped += 1
+                        continue
+                    }
+                    let entry = entryRecord.makeEntry()
+                    context.insert(entry)
+                    entry.journal = journal
+                    report.entriesAdded += 1
+                    // The shelf is ordered by this, so a journal that gained entries moves up.
+                    if entry.updatedAt > journal.updatedAt {
+                        journal.updatedAt = entry.updatedAt
+                    }
                 }
             }
+            return report
         }
-        try context.save()
-        return report
     }
 }
