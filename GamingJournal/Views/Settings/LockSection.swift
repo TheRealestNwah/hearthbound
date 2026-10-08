@@ -22,10 +22,10 @@ struct LockSection: View {
             .disabled(isChanging)
             Toggle("Show in Spotlight", systemImage: "magnifyingglass", isOn: $spotlightEnabled)
         } header: {
-            Text("Privacy")
+            PaperSectionHeader("Privacy")
         } footer: {
-            Text("The lock seals your journals whenever you leave the app: they hide from the app switcher, and the widget and iOS search stop showing your writing. Spotlight lets you find journals and entries from iOS search.")
+            PaperSectionFooter("The lock seals your journals whenever you leave the app: they hide from the app switcher, and the widget and iOS search stop showing your writing. Spotlight lets you find journals and entries from iOS search.")
         }
-        .listRowBackground(Theme.paper.opacity(0.6))
+        .paperRow()
     }
 }

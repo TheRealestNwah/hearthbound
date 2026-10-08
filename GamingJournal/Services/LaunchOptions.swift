@@ -16,6 +16,21 @@ enum LaunchOptions {
         ProcessInfo.processInfo.arguments.contains(demoDataArgument)
     }
 
+    /// `-appearance light|dark`: screenshots of both looks whatever the test machine uses.
+    static var appearance: String? {
+        isUITesting ? UserDefaults.standard.string(forKey: "appearance") : nil
+    }
+
+    /// `-largeText YES`: an accessibility text size, to check text wraps rather than clips.
+    static var largeText: Bool {
+        isUITesting && UserDefaults.standard.bool(forKey: "largeText")
+    }
+
+    /// `-compactWindow YES`: opens the Mac window at its smallest size.
+    static var compactWindow: Bool {
+        isUITesting && UserDefaults.standard.bool(forKey: "compactWindow")
+    }
+
     /// Fresh, empty defaults for a UI-test launch.
     static func uiTestingDefaults() -> UserDefaults {
         let name = "GamingJournal.uiTesting"

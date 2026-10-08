@@ -29,18 +29,23 @@ struct SettingsView: View {
                     Button("Export Backup", systemImage: "square.and.arrow.up") { exportJSON() }
                     Button("Import Backup", systemImage: "square.and.arrow.down") { isImporting = true }
                 } header: {
-                    Text("Your journals")
+                    PaperSectionHeader("Your journals")
                 } footer: {
-                    Text("A backup holds every journal, entry and picture. Importing only adds what's missing, so nothing is duplicated.")
+                    PaperSectionFooter("A backup holds every journal, entry and picture. Importing only adds what's missing, so nothing is duplicated.")
                 }
-                .listRowBackground(Theme.paper.opacity(0.6))
+                .paperRow()
 
                 #if os(iOS)
                 LockSection()
                 #else
-                Section("Privacy") {
+                Section {
                     MacSpotlightSetting()
+                } header: {
+                    PaperSectionHeader("Privacy")
+                } footer: {
+                    PaperSectionFooter("Spotlight lets you find journals and entries from Mac search.")
                 }
+                .paperRow()
                 #endif
 
                 // Free-team builds can't sign the iCloud entitlement, so there is nothing to sync with.
@@ -48,32 +53,26 @@ struct SettingsView: View {
                 Section {
                     Toggle("iCloud Sync", systemImage: "icloud", isOn: $syncEnabled)
                 } header: {
-                    Text("Sync")
+                    PaperSectionHeader("Sync")
                 } footer: {
-                    Text(syncFooter)
+                    PaperSectionFooter(syncFooter)
                 }
-                .listRowBackground(Theme.paper.opacity(0.6))
+                .paperRow()
                 #endif
 
                 RemindersSection()
 
-                Section("About") {
-                    LabeledContent("Journals", value: "\(journals.count)")
-                    LabeledContent("Entries", value: "\(entries.count)")
-                    LabeledContent("Version", value: Self.appVersion)
+                Section {
+                    aboutRow("Journals", "\(journals.count)")
+                    aboutRow("Entries", "\(entries.count)")
+                    aboutRow("Version", Self.appVersion)
+                } header: {
+                    PaperSectionHeader("About")
                 }
-                .listRowBackground(Theme.paper.opacity(0.6))
+                .paperRow()
             }
-            .journalFormStyle()
-            .scrollContentBackground(.hidden)
-            .background(PaperBackground())
-            .navigationTitle("Settings")
-            .inlineJournalTitle()
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Close", systemImage: "xmark") { dismiss() }
-                }
-            }
+            .paperForm()
+            .paperSheet("Settings", confirm: SheetAction(title: "Close", systemImage: "xmark") { dismiss() })
             .fileExporter(
                 isPresented: Binding(get: { exportDocument != nil }, set: { if !$0 { exportDocument = nil } }),
                 document: exportDocument,
@@ -97,6 +96,15 @@ struct SettingsView: View {
         .journalCommandActions(JournalCommandActions())
         .tint(Theme.rubric)
         .journalSheetSize()
+    }
+
+    /// A value in faded ink: the form's default secondary colour fades the ink below AA.
+    private func aboutRow(_ label: String, _ value: String) -> some View {
+        LabeledContent {
+            Text(value).foregroundStyle(Theme.fadedInk)
+        } label: {
+            Text(label)
+        }
     }
 
     private var syncFooter: String {

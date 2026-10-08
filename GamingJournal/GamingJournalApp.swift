@@ -37,10 +37,11 @@ struct GamingJournalApp: App {
         Window("Hearthbound", id: "journals") {
             RootView()
                 .environment(appLock)
+                .uiTestLook()
                 .frame(minWidth: 640, minHeight: 540)
         }
         .modelContainer(container)
-        .defaultSize(width: 1100, height: 800)
+        .defaultSize(width: LaunchOptions.compactWindow ? 640 : 1100, height: LaunchOptions.compactWindow ? 540 : 800)
         .commands {
             // Keep one journal workflow while using normal Mac launch/reopen behavior.
             JournalCommands()
@@ -51,8 +52,25 @@ struct GamingJournalApp: App {
             RootView()
                 .environment(appLock)
                 .appLock(appLock)
+                .uiTestLook()
         }
         .modelContainer(container)
         #endif
+    }
+}
+
+private extension View {
+    /// The appearance and text size a UI test asked for, if any.
+    @ViewBuilder func uiTestLook() -> some View {
+        let scheme: ColorScheme? = switch LaunchOptions.appearance {
+        case "dark": .dark
+        case "light": .light
+        default: nil
+        }
+        if LaunchOptions.largeText {
+            preferredColorScheme(scheme).dynamicTypeSize(.accessibility2)
+        } else {
+            preferredColorScheme(scheme)
+        }
     }
 }
