@@ -42,4 +42,3 @@ The app is called **Hearthbound**. Its Xcode targets, schemes, bundle IDs, app g
 See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Codex
-`AGENTS.md` holds the same notes for Codex, plus the workflow rules from the owner's global setup. When this file changes, update it to match.
