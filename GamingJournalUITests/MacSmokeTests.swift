@@ -119,11 +119,11 @@ final class MacSmokeTests: XCTestCase {
     // Screenshots of every paper screen in each look, kept in the CI artifacts for inspection.
     // They're evidence for a person to read, not an automatic contrast check: ThemeTests covers
     // the colours. Each tour also checks every action can still be reached.
-    func testReadabilityTourLight() throws { try readabilityTour(appearance: "light") }
-    func testReadabilityTourDark() throws { try readabilityTour(appearance: "dark") }
-    func testReadabilityTourCompactWindow() throws { try readabilityTour(appearance: "dark", arguments: ["-compactWindow", "YES", "-largeText", "YES"]) }
+    func testReadabilityTourLight() { readabilityTour(appearance: "light") }
+    func testReadabilityTourDark() { readabilityTour(appearance: "dark") }
+    func testReadabilityTourCompactWindow() { readabilityTour(appearance: "dark", arguments: ["-compactWindow", "YES", "-largeText", "YES"]) }
 
-    private func readabilityTour(appearance: String, arguments: [String] = []) throws {
+    private func readabilityTour(appearance: String, arguments: [String] = []) {
         let tag = "tour-\(appearance)\(arguments.isEmpty ? "" : "-compact")"
         let app = launch(demo: true, arguments: ["-appearance", appearance] + arguments)
         capture("\(tag)-shelf", app)
@@ -206,12 +206,11 @@ final class MacSmokeTests: XCTestCase {
         // Neighbouring page hosts are kept alive offscreen, so use the copy on screen.
         let sheetClosed = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: contentsSearch)
         wait(for: [sheetClosed], timeout: 15)
-        let entries = app.windows.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "sent me back out"))
-        XCTAssertTrue(entries.firstMatch.waitForExistence(timeout: 15))
-        let onScreen = expectation(for: NSPredicate { _, _ in entries.allElementsBoundByIndex.contains { $0.isHittable } }, evaluatedWith: entries)
-        wait(for: [onScreen], timeout: 15)
-        let entry = try XCTUnwrap(entries.allElementsBoundByIndex.first { $0.isHittable }, "No copy of the new entry is on screen")
-        entry.rightClick()
+        let entry = app.windows.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "sent me back out")).firstMatch
+        XCTAssertTrue(entry.waitForExistence(timeout: 15))
+        // The entry's frame runs past the bottom of the page viewport, so its centre
+        // isn't hittable. Its first line is on screen; right-click there.
+        entry.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0)).withOffset(CGVector(dx: 0, dy: 12)).rightClick()
         let share = app.menuItems["Share as Picture"]
         if share.waitForExistence(timeout: 5) {
             share.click()
