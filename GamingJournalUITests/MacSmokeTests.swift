@@ -204,8 +204,12 @@ final class MacSmokeTests: XCTestCase {
         app.windows.buttons.matching(identifier: "Close").firstMatch.click()
 
         // Neighbouring page hosts are kept alive offscreen, so use the copy on screen.
+        let sheetClosed = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: contentsSearch)
+        wait(for: [sheetClosed], timeout: 15)
         let entries = app.windows.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "sent me back out"))
         XCTAssertTrue(entries.firstMatch.waitForExistence(timeout: 15))
+        let onScreen = expectation(for: NSPredicate { _, _ in entries.allElementsBoundByIndex.contains { $0.isHittable } }, evaluatedWith: entries)
+        wait(for: [onScreen], timeout: 15)
         let entry = try XCTUnwrap(entries.allElementsBoundByIndex.first { $0.isHittable }, "No copy of the new entry is on screen")
         entry.rightClick()
         let share = app.menuItems["Share as Picture"]
