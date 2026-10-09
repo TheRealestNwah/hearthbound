@@ -303,6 +303,7 @@ struct JournalView: View {
         .alert("Could not complete the action", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
             Button("OK", role: .cancel) { errorMessage = nil }
         } message: { Text(errorMessage ?? "") }
+        .onAppear { ShelfMemory().noteOpened(journal.id) }
     }
 
     /// The page area was measured: lay out the pages again and keep the book open where it was.

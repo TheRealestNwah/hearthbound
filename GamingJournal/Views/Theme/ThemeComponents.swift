@@ -46,12 +46,24 @@ struct PaperBackground: View {
     }
 }
 
-/// Dark wood behind the shelf.
+/// Dark wood behind the shelf, with a soft candlelight on its upper part. Increase Contrast leaves
+/// the light off.
 struct WoodBackground: View {
+    @Environment(\.colorSchemeContrast) private var contrast
+
     var body: some View {
-        LinearGradient(colors: [Theme.woodLight, Theme.wood], startPoint: .top, endPoint: .bottom)
-            .ignoresSafeArea()
-            .accessibilityHidden(true)
+        ZStack {
+            LinearGradient(colors: [Theme.woodLight, Theme.wood], startPoint: .top, endPoint: .bottom)
+            if contrast != .increased {
+                GeometryReader { geometry in
+                    RadialGradient(colors: [Theme.candlelight, .clear], center: UnitPoint(x: 0.5, y: 0.05),
+                                   startRadius: 0, endRadius: max(geometry.size.width, geometry.size.height) * 0.6)
+                }
+            }
+        }
+        .ignoresSafeArea()
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 
@@ -109,38 +121,35 @@ enum CoverStyle: String, CaseIterable, Identifiable, Codable {
         case .bloodMoon: [Color(hex: 0x3A0D12), Color(hex: 0x7E1C24)]
         }
     }
+
+    /// The darkest tone, pressed into the title plate so gilt lettering reads on every leather.
+    var plate: Color { colors[0] }
 }
 
-/// A journal lying on the shelf: a leather band with the character's name and a gilt clasp.
+/// A journal lying on the shelf: grained leather with a banded spine, a gilt-tooled border, the
+/// character's name in gilt on a title plate, and a gilt clasp. The journal opened last carries
+/// a silk ribbon hanging from its foot.
 struct ShelfBook: View {
     let name: String
     var subtitle: String = ""
     var style: CoverStyle = .ember
+    /// A quiet line on where the story stands, such as the latest entry's in-game date.
+    var caption: String = ""
+    var isLastOpened = false
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.colorSchemeContrast) private var contrast
 
     /// Covers keep their colours in both modes, so this cream is fixed too. It is used at full
     /// strength: faded, it drops below AA on the lighter Forest and Frost leathers.
     private let cream = Theme.waxInk
+    private let spineWidth: CGFloat = 26
+    private static let shape = UnevenRoundedRectangle(topLeadingRadius: 6, bottomLeadingRadius: 6, bottomTrailingRadius: 10, topTrailingRadius: 10)
 
     var body: some View {
         HStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(name)
-                    .font(Theme.book(25, relativeTo: .title2))
-                    .foregroundStyle(cream)
-                    .lineLimit(typeSize.isAccessibilitySize ? nil : 3)
-                    .minimumScaleFactor(0.9)
-                    .fixedSize(horizontal: false, vertical: true)
-                if !subtitle.isEmpty {
-                    Text(subtitle)
-                        .font(Theme.bookItalic(15, relativeTo: .subheadline))
-                        .foregroundStyle(cream)
-                        .lineLimit(typeSize.isAccessibilitySize ? nil : 2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            .padding(.leading, 34)
-            .padding(.vertical, 22)
+            titlePlate
+                .padding(.leading, spineWidth + 14)
+                .padding(.vertical, 18)
             Spacer(minLength: 12)
             // The gilt clasp.
             LinearGradient(colors: [Color(hex: 0x8A6A2A), Theme.gold, Color(hex: 0x8A6A2A)], startPoint: .leading, endPoint: .trailing)
@@ -148,18 +157,129 @@ struct ShelfBook: View {
                 .opacity(0.85)
                 .padding(.trailing, 26)
         }
-        .frame(maxWidth: .infinity, minHeight: 110)
-        .background {
-            ZStack(alignment: .leading) {
-                LinearGradient(colors: style.colors, startPoint: .bottomLeading, endPoint: .topTrailing)
-                // The spine.
-                LinearGradient(colors: [.black.opacity(0.45), .black.opacity(0.05)], startPoint: .leading, endPoint: .trailing)
-                    .frame(width: 22)
+        .frame(maxWidth: .infinity, minHeight: 120)
+        .background { leather }
+        .clipShape(Self.shape)
+        .shadow(color: .black.opacity(0.5), radius: 6, y: 5)
+        .background(alignment: .bottomTrailing) {
+            if isLastOpened {
+                // Behind the cover, so only its tail shows below the book.
+                RibbonMarker(length: 40, width: 12)
+                    .offset(x: -54, y: 18)
+                    .accessibilityHidden(true)
             }
         }
-        .clipShape(UnevenRoundedRectangle(topLeadingRadius: 6, bottomLeadingRadius: 6, bottomTrailingRadius: 10, topTrailingRadius: 10))
-        .shadow(color: .black.opacity(0.5), radius: 6, y: 5)
         .accessibilityElement(children: .combine)
+        .accessibilityValue(isLastOpened ? "Opened last" : "")
+    }
+
+    /// The name in gilt on a plate of the darkest leather, with the subtitle and caption in cream.
+    private var titlePlate: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(name)
+                .font(Theme.book(25, relativeTo: .title2))
+                .foregroundStyle(Theme.gold)
+                .lineLimit(typeSize.isAccessibilitySize ? nil : 3)
+                .minimumScaleFactor(0.9)
+                .fixedSize(horizontal: false, vertical: true)
+            if !subtitle.isEmpty {
+                Text(subtitle)
+                    .font(Theme.bookItalic(15, relativeTo: .subheadline))
+                    .foregroundStyle(cream)
+                    .lineLimit(typeSize.isAccessibilitySize ? nil : 2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if !caption.isEmpty {
+                Text(caption)
+                    .font(Theme.bookItalic(14, relativeTo: .footnote))
+                    .foregroundStyle(cream)
+                    .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(RoundedRectangle(cornerRadius: 4).fill(style.plate))
+        .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(Theme.gold.opacity(contrast == .increased ? 1 : 0.6), lineWidth: 1))
+    }
+
+    private var leather: some View {
+        ZStack(alignment: .leading) {
+            LinearGradient(colors: style.colors, startPoint: .bottomLeading, endPoint: .topTrailing)
+            if contrast != .increased {
+                LeatherGrain()
+            }
+            // Gilt tooling round the board, inside the spine.
+            Self.shape
+                .inset(by: 7)
+                .strokeBorder(Theme.gold.opacity(0.35), lineWidth: 1)
+                .padding(.leading, spineWidth - 4)
+            spine
+        }
+    }
+
+    /// The spine: shadowed leather with raised bands picked out in gilt.
+    private var spine: some View {
+        ZStack {
+            LinearGradient(colors: [.black.opacity(0.5), .black.opacity(0.1)], startPoint: .leading, endPoint: .trailing)
+            VStack {
+                Spacer()
+                ForEach(0..<3, id: \.self) { _ in
+                    Capsule()
+                        .fill(LinearGradient(colors: [Color(hex: 0x8A6A2A), Theme.gold.opacity(0.8), Color(hex: 0x8A6A2A)],
+                                             startPoint: .top, endPoint: .bottom))
+                        .frame(height: 3)
+                        .padding(.horizontal, 4)
+                    Spacer()
+                }
+            }
+            .opacity(0.7)
+        }
+        .frame(width: spineWidth)
+    }
+}
+
+/// Fine dark speckle over a cover, so the leather has some grain. Seeded, so it doesn't shimmer.
+private struct LeatherGrain: View {
+    var body: some View {
+        Canvas { context, size in
+            guard size.width >= 1, size.height >= 1 else { return }
+            var generator = SeededGenerator(seed: 0x1EA7)
+            let specks = Int(size.width * size.height / 260)
+            for _ in 0..<specks {
+                let x = CGFloat.random(in: 0..<size.width, using: &generator)
+                let y = CGFloat.random(in: 0..<size.height, using: &generator)
+                let side = CGFloat.random(in: 0.8...2.2, using: &generator)
+                let opacity = Double.random(in: 0.05...0.14, using: &generator)
+                context.fill(Path(ellipseIn: CGRect(x: x, y: y, width: side, height: side)), with: .color(.black.opacity(opacity)))
+            }
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+/// The empty shelf's invitation: an unwritten book outlined in gilt, with a wax seal.
+struct BlankBook: View {
+    var body: some View {
+        VStack(spacing: 12) {
+            WaxSeal(systemImage: "plus", size: 48)
+                .accessibilityHidden(true)
+            Text("Begin a new journal")
+                .font(Theme.bookCaps(22, relativeTo: .title3))
+                .foregroundStyle(Theme.gold)
+                .multilineTextAlignment(.center)
+            Text("One book for each character you play.")
+                .font(Theme.bookItalic(16, relativeTo: .subheadline))
+                .foregroundStyle(Theme.woodFaded)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 28)
+        .frame(maxWidth: .infinity, minHeight: 170)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Color.black.opacity(0.25)))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.gold.opacity(0.6), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4])))
+        .contentShape(RoundedRectangle(cornerRadius: 10))
     }
 }
 
@@ -190,7 +310,8 @@ struct WaxSeal: View {
     ZStack {
         PaperBackground()
         VStack(spacing: 24) {
-            ShelfBook(name: "Eira Stormborn", subtitle: "Nord · Skyrim", style: .ember)
+            ShelfBook(name: "Eira Stormborn", subtitle: "Nord · Skyrim", style: .ember,
+                      caption: "Last entry: 17th of Last Seed", isLastOpened: true)
             Text("16th of Last Seed, 4E 201").font(Theme.dateLine).foregroundStyle(Theme.rubric)
             Text("The cart ride ended at a headsman's block.").font(Theme.prose)
             WaxSeal()

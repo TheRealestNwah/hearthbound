@@ -23,3 +23,7 @@ New entry text, date and place are kept locally while writing. **Keep Draft** re
 Saving waits for picture imports to finish. Import progress and failed picture names are shown, and successful pictures stay available when another fails. On Mac, use Photos, the file picker or drop picture files onto the writer. Failed entry/journal saves keep the editor open for retry. PDF/Markdown write failures are reported separately from cancellation.
 
 On Mac, the menus expose Settings (Command-comma), New Journal (Command-Shift-N), Write Entry (Command-N) and Find (Command-F). Commands are unavailable while editing a sheet. The bookshelf control returns from the reader; page arrows turn pages. New bookmarks and manual page turns preserve an entry text location during reflow; old bookmarks remain readable. The writing control has reserved space below the page, and unusually tall content includes a scroll hint.
+
+## Shelf
+
+Each cover shows the character in gilt on a title plate, with the latest entry's in-game date beneath; the journal opened last on this device carries a ribbon. Choosing a journal brings the book forward and swings its cover open onto the reader in about half a second. Reduce Motion skips this and opens the reader directly, and UI tests skip it too so their screenshots never catch it mid-way, so check the movement by hand on iPhone, iPad and Mac. An empty shelf offers a blank book to **Begin a new journal**.

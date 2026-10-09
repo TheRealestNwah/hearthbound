@@ -160,6 +160,27 @@ final class ThemeContrastTests: XCTestCase {
         }
     }
 
+    /// The candlelight warms the top of the shelf, where the heading and first books sit.
+    func testShelfTextMeetsAAUnderCandlelight() {
+        for surface in [Theme.wood, Theme.woodLight] {
+            let lit = luminance(composite(Theme.candlelight, over: surface, dark: false))
+            for (name, color) in [("woodInk", Theme.woodInk), ("woodFaded", Theme.woodFaded), ("gold", Theme.gold)] {
+                let measured = ratio(luminance(color, dark: false), lit)
+                XCTAssertGreaterThanOrEqual(measured, 4.5, "\(name) under candlelight is \(String(format: "%.2f", measured)):1")
+            }
+        }
+    }
+
+    /// The gilt name sits on each cover's title plate.
+    func testGiltTitleMeetsAAOnEveryPlate() {
+        for style in CoverStyle.allCases {
+            for (name, color) in [("gold", Theme.gold), ("cream", Theme.waxInk)] {
+                let ratio = contrast(color, style.plate, dark: false)
+                XCTAssertGreaterThanOrEqual(ratio, 4.5, "\(name) on the \(style.label) plate is \(String(format: "%.2f", ratio)):1")
+            }
+        }
+    }
+
     func testSeededGeneratorIsDeterministic() {
         var a = SeededGenerator(seed: 42)
         var b = SeededGenerator(seed: 42)

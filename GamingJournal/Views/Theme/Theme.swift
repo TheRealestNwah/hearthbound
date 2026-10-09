@@ -35,6 +35,8 @@ enum Theme {
     static let woodFaded = Color(hex: 0xB8A283)
     /// Gilt: clasps, tooling and actions on the shelf.
     static let gold = Color(hex: 0xD6B46A)
+    /// A faint warm light falling on the top of the shelf. Shelf text stays AA on wood under it.
+    static let candlelight = Color(hex: 0xD6B46A).opacity(0.08)
     /// Sealing wax.
     static let wax = Color(hex: 0x8E2A1C)
     /// A wash of gilt behind searched-for words on a page. Light enough that ink stays readable.
