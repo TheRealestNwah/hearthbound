@@ -222,6 +222,9 @@ struct JournalEditorView: View {
     @State private var epithet: String
     @State private var gameTitle: String
     @State private var coverStyle: CoverStyle
+    @State private var calendar: JournalCalendar
+    /// Set once the writer picks a calendar, so the game's name stops suggesting one.
+    @State private var calendarChosen = false
     @FocusState private var nameFocused: Bool
     @State private var errorMessage: String?
 
@@ -232,6 +235,9 @@ struct JournalEditorView: View {
         _epithet = State(initialValue: journal?.epithet ?? "")
         _gameTitle = State(initialValue: journal?.gameTitle ?? "")
         _coverStyle = State(initialValue: journal?.coverStyle ?? .ember)
+        // A journal from before calendars starts on the one its latest date is written in.
+        let guessed = journal?.latestEntry.flatMap { JournalCalendar.recognizing($0.inGameDate) }
+        _calendar = State(initialValue: journal.map { $0.calendar == .freeText ? guessed ?? .freeText : $0.calendar } ?? .freeText)
     }
 
     private var trimmedName: String {
@@ -298,6 +304,41 @@ struct JournalEditorView: View {
         .accessibilityAddTraits(isChosen ? [.isButton, .isSelected] : .isButton)
     }
 
+    /// A calendar with a sample date beneath its name, and a tick on the chosen one.
+    private func calendarChoice(_ choice: JournalCalendar) -> some View {
+        let isChosen = calendar == choice
+        return Button {
+            calendar = choice
+            calendarChosen = true
+        } label: {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(choice.label)
+                        .font(isChosen ? Theme.bookCaps(17, relativeTo: .body) : Theme.book(17))
+                        .foregroundStyle(isChosen ? Theme.rubric : Theme.ink)
+                    Text(choice.sample ?? choice.detail)
+                        .font(Theme.bookItalic(15, relativeTo: .footnote))
+                        .foregroundStyle(Theme.fadedInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 8)
+                if isChosen {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(Theme.rubric)
+                        .accessibilityHidden(true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(choice.label)
+        .accessibilityValue(choice.sample.map { "Dates like \($0)" } ?? choice.detail)
+        .accessibilityAddTraits(isChosen ? [.isButton, .isSelected] : .isButton)
+        .accessibilityIdentifier("calendar.\(choice.rawValue)")
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -322,6 +363,17 @@ struct JournalEditorView: View {
                     PaperSectionHeader("Cover")
                 }
                 .paperRow()
+
+                Section {
+                    ForEach(JournalCalendar.allCases) { choice in
+                        calendarChoice(choice)
+                    }
+                } header: {
+                    PaperSectionHeader("Calendar")
+                } footer: {
+                    PaperSectionFooter("Suggests the date on each new page, and lets Next day step it on. You can always write the date your own way; changing this never alters pages already written.")
+                }
+                .paperRow()
             }
             .paperForm()
             .paperSheet(
@@ -330,6 +382,11 @@ struct JournalEditorView: View {
                 confirm: SheetAction(title: journal == nil ? "Begin" : "Save", systemImage: "checkmark", isDisabled: trimmedName.isEmpty, action: save)
             )
             .onAppear { if journal == nil { nameFocused = true } }
+            .onChange(of: gameTitle) { _, game in
+                // "Skyrim" suggests Tamriel, until a calendar is picked by hand.
+                guard journal == nil, !calendarChosen else { return }
+                calendar = JournalCalendar.suggested(forGame: game) ?? .freeText
+            }
         }
         .tint(Theme.rubric)
         .journalSheetSize()
@@ -348,10 +405,12 @@ struct JournalEditorView: View {
                     journal.epithet = epithet.trimmingCharacters(in: .whitespacesAndNewlines)
                     journal.gameTitle = gameTitle.trimmingCharacters(in: .whitespacesAndNewlines)
                     journal.coverStyle = coverStyle
+                    journal.calendar = calendar
                     journal.touch()
                     return journal
                 }
-                let created = Journal(characterName: trimmedName, epithet: epithet, gameTitle: gameTitle, coverStyle: coverStyle)
+                let created = Journal(characterName: trimmedName, epithet: epithet, gameTitle: gameTitle,
+                                      coverStyle: coverStyle, calendar: calendar)
                 context.insert(created)
                 return created
             }

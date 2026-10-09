@@ -33,6 +33,8 @@ struct JournalBackup: Codable, Equatable {
         var epithet: String
         var gameTitle: String
         var coverStyle: String
+        /// Optional so backups made before calendars still import.
+        var calendar: String?
         var createdAt: Date
         var updatedAt: Date
         var entries: [EntryRecord]
@@ -129,6 +131,7 @@ extension JournalBackup.JournalRecord {
         epithet = journal.epithet
         gameTitle = journal.gameTitle
         coverStyle = journal.coverStyleRaw
+        calendar = journal.calendar == .freeText ? nil : journal.calendarRaw
         createdAt = journal.createdAt
         updatedAt = journal.updatedAt
         entries = try journal.story.map(JournalBackup.EntryRecord.init(entry:))
@@ -142,6 +145,7 @@ extension JournalBackup.JournalRecord {
             epithet: epithet,
             gameTitle: gameTitle,
             coverStyle: CoverStyle(rawValue: coverStyle) ?? .ember,
+            calendar: calendar.flatMap(JournalCalendar.init(rawValue:)) ?? .freeText,
             createdAt: createdAt
         )
         journal.updatedAt = updatedAt
