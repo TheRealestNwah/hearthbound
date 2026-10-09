@@ -194,56 +194,97 @@ struct JournalEditorView: View {
         characterName.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    @ScaledMetric(relativeTo: .body) private var coverChoiceWidth: CGFloat = 76
+
+    /// A labelled field, so what it's for stays clear once something is written in it.
+    private func field(_ label: String, text: Binding<String>, prompt: String, font: Font = Theme.book(17),
+                       focus: FocusState<Bool>.Binding? = nil, identifier: String? = nil) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(Theme.bookCaps(15, relativeTo: .subheadline))
+                .foregroundStyle(Theme.fadedInk)
+                .accessibilityHidden(true)
+            Group {
+                if let focus {
+                    TextField(label, text: text, prompt: Text(prompt).foregroundStyle(Theme.fadedInk)).focused(focus)
+                } else {
+                    TextField(label, text: text, prompt: Text(prompt).foregroundStyle(Theme.fadedInk))
+                }
+            }
+            .font(font)
+            .foregroundStyle(Theme.ink)
+            .capitalizedWords()
+            // The caption above names the field; a Mac form would repeat it beside the box.
+            .labelsHidden()
+            .accessibilityIdentifier(identifier ?? label)
+            .paperField()
+        }
+        .padding(.vertical, 2)
+    }
+
+    /// A leather swatch with its name beneath, and a gilt ring and tick on the chosen one, so the
+    /// choice doesn't rest on colour alone.
+    private func coverChoice(_ style: CoverStyle) -> some View {
+        let isChosen = coverStyle == style
+        return Button { coverStyle = style } label: {
+            VStack(spacing: 6) {
+                Circle()
+                    .fill(LinearGradient(colors: style.colors, startPoint: .bottomLeading, endPoint: .topTrailing))
+                    .frame(width: 40, height: 40)
+                    .overlay(Circle().strokeBorder(Theme.gold, lineWidth: isChosen ? 3 : 0))
+                    .overlay {
+                        if isChosen {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundStyle(Theme.waxInk)
+                        }
+                    }
+                Text(style.label)
+                    .font(isChosen ? Theme.bookCaps(15, relativeTo: .footnote) : Theme.book(15, relativeTo: .footnote))
+                    .foregroundStyle(isChosen ? Theme.rubric : Theme.fadedInk)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(style.label)
+        .accessibilityAddTraits(isChosen ? [.isButton, .isSelected] : .isButton)
+    }
+
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Character's name", text: $characterName)
-                        .font(Theme.book(20, relativeTo: .title3))
-                        .capitalizedWords()
-                        .focused($nameFocused)
-                        .accessibilityIdentifier("characterName")
-                    TextField("Race, class or title", text: $epithet)
-                        .capitalizedWords()
-                    TextField("Game", text: $gameTitle)
-                        .capitalizedWords()
+                    field("Character's name", text: $characterName, prompt: "e.g. Eira Stormborn",
+                          font: Theme.book(20, relativeTo: .title3), focus: $nameFocused, identifier: "characterName")
+                    field("Race, class or title", text: $epithet, prompt: "e.g. Nord warrior")
+                    field("Game", text: $gameTitle, prompt: "e.g. Skyrim")
                 } footer: {
-                    Text("The journal is written by this character, in their own words.")
+                    PaperSectionFooter("The journal is written by this character, in their own words.")
                 }
-                .listRowBackground(Theme.paper.opacity(0.6))
+                .paperRow()
 
-                Section("Cover") {
-                    HStack(spacing: 14) {
+                Section {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: coverChoiceWidth), spacing: 12, alignment: .top)], alignment: .leading, spacing: 12) {
                         ForEach(CoverStyle.allCases) { style in
-                            Button { coverStyle = style } label: {
-                                Circle()
-                                    .fill(LinearGradient(colors: style.colors, startPoint: .bottomLeading, endPoint: .topTrailing))
-                                    .frame(width: 40, height: 40)
-                                    .overlay(Circle().strokeBorder(Theme.gold, lineWidth: coverStyle == style ? 3 : 0))
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel(style.label)
-                            .accessibilityAddTraits(coverStyle == style ? [.isButton, .isSelected] : .isButton)
+                            coverChoice(style)
                         }
                     }
                     .padding(.vertical, 4)
+                } header: {
+                    PaperSectionHeader("Cover")
                 }
-                .listRowBackground(Theme.paper.opacity(0.6))
+                .paperRow()
             }
-            .journalFormStyle()
-            .scrollContentBackground(.hidden)
-            .background(PaperBackground())
-            .navigationTitle(journal == nil ? "New Journal" : "Edit Journal")
-            .inlineJournalTitle()
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel", systemImage: "xmark") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(journal == nil ? "Begin" : "Save", systemImage: "checkmark", action: save)
-                        .disabled(trimmedName.isEmpty)
-                }
-            }
+            .paperForm()
+            .paperSheet(
+                journal == nil ? "New Journal" : "Edit Journal",
+                cancel: SheetAction(title: "Cancel", systemImage: "xmark") { dismiss() },
+                confirm: SheetAction(title: journal == nil ? "Begin" : "Save", systemImage: "checkmark", isDisabled: trimmedName.isEmpty, action: save)
+            )
             .onAppear { if journal == nil { nameFocused = true } }
         }
         .tint(Theme.rubric)

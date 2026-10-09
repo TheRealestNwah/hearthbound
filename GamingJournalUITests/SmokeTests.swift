@@ -35,6 +35,13 @@ final class SmokeTests: XCTestCase {
         app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
     }
 
+    /// Waits for a sheet to finish sliding away. While it closes, the reader behind it is
+    /// still scaled down and its controls can't be tapped.
+    private func waitForSheetToClose(_ marker: XCUIElement) {
+        let closed = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: marker)
+        wait(for: [closed], timeout: Self.step)
+    }
+
     /// Taps a field and types into it. A tap that lands while a sheet is still sliding in can miss
     /// the field, so tap again (a few times at most) until it reports keyboard focus (#111).
     private func type(_ text: String, into field: XCUIElement) {
@@ -216,6 +223,70 @@ final class SmokeTests: XCTestCase {
         XCTAssertTrue(app.buttons["Done"].isEnabled)
         XCTAssertEqual(app.textViews["entryBody"].value as? String, "Words remain when a picture fails.")
         app.buttons["Done"].tap()
+    }
+
+
+    // MARK: Readability tour (#227)
+
+    // Screenshots of each paper screen in both looks and at an accessibility text size, kept in
+    // the CI artifacts for a person to inspect (ThemeTests checks the colours). Runs on iPhone and
+    // iPad. Each tour also checks the screen's actions stay reachable.
+    func testReadabilityTourLight() { readabilityTour("light") }
+    func testReadabilityTourDark() { readabilityTour("dark") }
+    func testReadabilityTourLargeText() {
+        readabilityTour("dark", arguments: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXL"])
+    }
+
+    private func readabilityTour(_ appearance: String, arguments: [String] = []) {
+        let tag = "tour-\(appearance)\(arguments.isEmpty ? "" : "-large")"
+        let app = launch(demoData: true, arguments: ["-appearance", appearance] + arguments)
+        XCTAssertTrue(app.buttons["Begin a new journal"].waitForExistence(timeout: Self.step))
+        capture("\(tag)-shelf", in: app)
+
+        app.buttons["Search"].tap()
+        type("zzz", into: app.textFields["Search the journals"])
+        capture("\(tag)-shelf-search-none", in: app)
+        app.buttons["Close search"].tap()
+
+        app.buttons["Begin a new journal"].tap()
+        let name = app.textFields["characterName"]
+        XCTAssertTrue(name.waitForExistence(timeout: Self.step))
+        capture("\(tag)-new-journal-empty", in: app)
+        type("Seraphina Ashvale of the Twelve Lanterns", into: name)
+        capture("\(tag)-new-journal-filled", in: app)
+        XCTAssertTrue(app.buttons["Begin"].isHittable)
+        app.buttons["Cancel"].tap()
+        waitForSheetToClose(name)
+
+        let journal = element(containing: "Eira Stormborn", in: app)
+        XCTAssertTrue(journal.waitForExistence(timeout: Self.step))
+        journal.tap()
+        let quill = app.buttons["Write a new entry"]
+        XCTAssertTrue(quill.waitForExistence(timeout: Self.step))
+        XCTAssertTrue(quill.isHittable)
+        capture("\(tag)-reader", in: app)
+
+        quill.tap()
+        XCTAssertTrue(app.textViews["entryBody"].waitForExistence(timeout: Self.step))
+        capture("\(tag)-writer-empty", in: app)
+        XCTAssertTrue(app.buttons["Cancel"].isHittable)
+        app.buttons["Cancel"].tap()
+        waitForSheetToClose(app.textViews["entryBody"])
+
+        app.buttons["contents"].tap()
+        let search = app.textFields["Search this journal"]
+        XCTAssertTrue(search.waitForExistence(timeout: Self.step))
+        capture("\(tag)-contents", in: app)
+        type("nothing like this", into: search)
+        capture("\(tag)-contents-none", in: app)
+        app.buttons["Close"].tap()
+        waitForSheetToClose(search)
+
+        app.buttons["Back to journals"].tap()
+        app.buttons["Settings"].tap()
+        XCTAssertTrue(app.buttons["Export Backup"].waitForExistence(timeout: Self.step))
+        capture("\(tag)-settings", in: app)
+        app.buttons["Close"].tap()
     }
 
 }

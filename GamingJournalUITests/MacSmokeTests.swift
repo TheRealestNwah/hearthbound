@@ -113,5 +113,122 @@ final class MacSmokeTests: XCTestCase {
         XCTAssertTrue(app.windows.buttons.matching(identifier: "Write a new entry").firstMatch.waitForExistence(timeout: 15))
     }
 
+
+    // MARK: Readability tour (#227)
+
+    // Screenshots of every paper screen in each look, kept in the CI artifacts for inspection.
+    // They're evidence for a person to read, not an automatic contrast check: ThemeTests covers
+    // the colours. Each tour also checks every action can still be reached.
+    func testReadabilityTourLight() { readabilityTour(appearance: "light") }
+    func testReadabilityTourDark() { readabilityTour(appearance: "dark") }
+    func testReadabilityTourCompactWindow() { readabilityTour(appearance: "dark", arguments: ["-compactWindow", "YES", "-largeText", "YES"]) }
+
+    private func readabilityTour(appearance: String, arguments: [String] = []) {
+        let tag = "tour-\(appearance)\(arguments.isEmpty ? "" : "-compact")"
+        let app = launch(demo: true, arguments: ["-appearance", appearance] + arguments)
+        capture("\(tag)-shelf", app)
+
+        // Shelf search, with results and with none.
+        app.windows.buttons.matching(identifier: "Search").firstMatch.click()
+        let search = app.windows.textFields["Search the journals"]
+        XCTAssertTrue(search.waitForExistence(timeout: 15))
+        capture("\(tag)-shelf-search-empty", app)
+        search.click()
+        search.typeText("dragonstone")
+        capture("\(tag)-shelf-search-results", app)
+        search.typeText("zzz")
+        capture("\(tag)-shelf-search-none", app)
+        app.windows.buttons.matching(identifier: "Close search").firstMatch.click()
+
+        // New Journal, empty then filled with long names.
+        app.windows.buttons.matching(identifier: "Begin a new journal").firstMatch.click()
+        let name = app.windows.textFields["characterName"]
+        XCTAssertTrue(name.waitForExistence(timeout: 15))
+        capture("\(tag)-new-journal-empty", app)
+        XCTAssertFalse(app.windows.buttons.matching(identifier: "Begin").firstMatch.isEnabled)
+        name.click()
+        name.typeText("Seraphina Ashvale of the Twelve Lanterns")
+        let epithet = app.windows.textFields["Race, class or title"]
+        epithet.click()
+        epithet.typeText("Breton spellsword and reluctant thane")
+        app.windows.buttons.matching(identifier: "Frost").firstMatch.click()
+        capture("\(tag)-new-journal-filled", app)
+        XCTAssertTrue(app.windows.buttons.matching(identifier: "Begin").firstMatch.isHittable)
+        app.windows.buttons.matching(identifier: "Begin").firstMatch.click()
+
+        // The new journal's empty reader, then back to the shelf with both covers.
+        let quill = app.windows.buttons.matching(identifier: "Write a new entry").firstMatch
+        XCTAssertTrue(quill.waitForExistence(timeout: 15))
+        capture("\(tag)-reader-empty", app)
+        app.windows.buttons.matching(identifier: "Back to journals").firstMatch.click()
+        XCTAssertTrue(app.windows.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Seraphina")).firstMatch.waitForExistence(timeout: 15))
+        capture("\(tag)-shelf-long-title", app)
+
+        // Edit Journal.
+        app.windows.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Eira Stormborn")).firstMatch.rightClick()
+        app.menuItems["Edit"].click()
+        XCTAssertTrue(app.windows.textFields["characterName"].waitForExistence(timeout: 15))
+        capture("\(tag)-edit-journal", app)
+        app.windows.buttons.matching(identifier: "Cancel").firstMatch.click()
+
+        // Reader, writer, Contents and the share preview.
+        app.windows.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Eira Stormborn")).firstMatch.click()
+        XCTAssertTrue(quill.waitForExistence(timeout: 15))
+        XCTAssertTrue(quill.isHittable)
+        capture("\(tag)-reader", app)
+        quill.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+        let body = app.windows.textViews["entryBody"]
+        XCTAssertTrue(body.waitForExistence(timeout: 15))
+        capture("\(tag)-writer-empty", app)
+        let date = app.windows.textFields["inGameDate"]
+        date.click()
+        date.typeKey("a", modifierFlags: .command)
+        date.typeText("21st of Last Seed, 4E 201")
+        let place = app.windows.textFields["place"]
+        place.click()
+        place.typeText("Dragonsreach")
+        body.click()
+        body.typeText("The Jarl listened, and then he sent me back out into the cold.")
+        capture("\(tag)-writer-filled", app)
+        XCTAssertTrue(app.windows.buttons.matching(identifier: "Done").firstMatch.isHittable)
+        app.windows.buttons.matching(identifier: "Done").firstMatch.click()
+        XCTAssertTrue(quill.waitForExistence(timeout: 15))
+
+        app.windows.buttons.matching(identifier: "contents").firstMatch.click()
+        let contentsSearch = app.windows.textFields["Search this journal"]
+        XCTAssertTrue(contentsSearch.waitForExistence(timeout: 15))
+        capture("\(tag)-contents", app)
+        contentsSearch.click()
+        contentsSearch.typeText("nothing like this")
+        capture("\(tag)-contents-none", app)
+        app.windows.buttons.matching(identifier: "Close").firstMatch.click()
+
+        // Neighbouring page hosts are kept alive offscreen, so use the copy on screen.
+        let sheetClosed = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: contentsSearch)
+        wait(for: [sheetClosed], timeout: 15)
+        let entry = app.windows.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "sent me back out")).firstMatch
+        XCTAssertTrue(entry.waitForExistence(timeout: 15))
+        // The entry's frame runs past the bottom of the page viewport, so its centre
+        // isn't hittable. Its first line is on screen; right-click there.
+        entry.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0)).withOffset(CGVector(dx: 0, dy: 12)).rightClick()
+        let share = app.menuItems["Share as Picture"]
+        if share.waitForExistence(timeout: 5) {
+            share.click()
+            // Only the preview: nothing is sent anywhere.
+            XCTAssertTrue(app.windows.buttons.matching(identifier: "Share").firstMatch.waitForExistence(timeout: 15))
+            capture("\(tag)-share-preview", app)
+            app.windows.buttons.matching(identifier: "Close").firstMatch.click()
+        } else {
+            app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
+        }
+
+        // Settings.
+        app.windows.buttons.matching(identifier: "Back to journals").firstMatch.click()
+        app.windows.buttons.matching(identifier: "Settings").firstMatch.click()
+        XCTAssertTrue(app.windows.buttons.matching(identifier: "Export Backup").firstMatch.waitForExistence(timeout: 15))
+        capture("\(tag)-settings", app)
+        app.windows.buttons.matching(identifier: "Close").firstMatch.click()
+    }
+
 }
 #endif

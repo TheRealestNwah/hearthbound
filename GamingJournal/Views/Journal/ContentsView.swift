@@ -72,13 +72,7 @@ struct ContentsView: View {
             }
             .scrollDismissesKeyboard(.immediately)
             .background(PaperBackground())
-            .navigationTitle("Contents")
-            .inlineJournalTitle()
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Close", systemImage: "xmark") { dismiss() }
-                }
-            }
+            .paperSheet("Contents", confirm: SheetAction(title: "Close", systemImage: "xmark") { dismiss() })
         }
         .journalCommandActions(JournalCommandActions())
         .tint(Theme.rubric)

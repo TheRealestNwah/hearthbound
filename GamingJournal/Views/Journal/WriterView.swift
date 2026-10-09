@@ -9,8 +9,9 @@ struct WriterView: View {
     let journal: Journal
     private let entry: Entry?
     @State private var draft: EntryDraft
-    /// The page as it opened, to tell whether × would throw anything away.
-    private let original: EntryDraft
+    /// The page as it opened, to tell whether × would throw anything away. Held in state so a
+    /// parent redraw re-running `init` can't restamp a new page's date and make it look edited.
+    @State private var original: EntryDraft
     @State private var isConfirmingDiscard = false
     /// An unfinished new entry left in this journal, offered back until the writer decides.
     @State private var unfinished: DraftShelf.Saved?
@@ -32,7 +33,7 @@ struct WriterView: View {
         self.journal = journal
         self.entry = entry
         let original = entry.map(EntryDraft.init(entry:)) ?? EntryDraft.new(in: journal)
-        self.original = original
+        _original = State(initialValue: original)
         _draft = State(initialValue: original)
         _unfinished = State(initialValue: entry == nil ? DraftShelf().saved(for: journal.id) : nil)
     }
@@ -50,22 +51,24 @@ struct WriterView: View {
                 }
 
                 Group {
-                    TextField("In-game date", text: $draft.inGameDate, prompt: Text("In-game date, e.g. 17th of Last Seed").foregroundStyle(Theme.fadedInk.opacity(0.7)))
+                    TextField("In-game date", text: $draft.inGameDate, prompt: Text("In-game date, e.g. 17th of Last Seed").foregroundStyle(Theme.fadedInk))
                         .font(Theme.dateLine)
                         .foregroundStyle(Theme.rubric)
                         .capitalizedWords()
                         .accessibilityIdentifier("inGameDate")
+                        .paperField()
                         .submitLabel(.next)
                         .onSubmit { placeFocused = true }
-                    TextField("Place", text: $draft.place, prompt: Text("Where, e.g. Whiterun").foregroundStyle(Theme.fadedInk.opacity(0.7)))
+                    TextField("Place", text: $draft.place, prompt: Text("Where, e.g. Whiterun").foregroundStyle(Theme.fadedInk))
                         .font(Theme.bookItalic(17, relativeTo: .subheadline))
-                        .foregroundStyle(Theme.fadedInk)
+                        .foregroundStyle(Theme.ink)
                         .capitalizedWords()
                         .accessibilityIdentifier("place")
                         .focused($placeFocused)
                         .submitLabel(.next)
                         .onSubmit { bodyFocused = true }
-                        .padding(.top, 2)
+                        .paperField()
+                        .padding(.top, 6)
                     if let next = InGameDate.nextDay(after: draft.inGameDate) {
                         nextDayButton(next)
                             .padding(.top, 4)
@@ -75,7 +78,7 @@ struct WriterView: View {
                         if draft.body.isEmpty {
                             Text("Dear journal…")
                                 .font(Theme.bookItalicFixed(fontSize))
-                                .foregroundStyle(Theme.fadedInk.opacity(0.7))
+                                .foregroundStyle(Theme.fadedInk)
                                 .padding(.top, 8)
                                 .padding(.leading, 5)
                                 .accessibilityHidden(true)
@@ -317,7 +320,7 @@ struct WriterView: View {
              entry != nil ? "Changes are kept when you save this entry." :
              draft.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Drafts keep words on this device. Save the entry to keep pictures." :
              "Words kept as a draft on this device. Save the entry to keep pictures.")
-            .font(Theme.bookItalic(12, relativeTo: .caption))
+            .font(Theme.bookItalic(14, relativeTo: .footnote))
             .foregroundStyle(Theme.fadedInk)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.bottom, 8)

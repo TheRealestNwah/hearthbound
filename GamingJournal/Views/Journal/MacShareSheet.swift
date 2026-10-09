@@ -6,17 +6,23 @@ struct ShareSheet: View {
     let items: [Any]
     @Environment(\.dismiss) private var dismiss
     var body: some View {
-        VStack(spacing: 20) {
-            Text("Share this page").font(Theme.book(24))
+        VStack(spacing: 16) {
             if let image = items.first as? NSImage {
-                Image(nsImage: image).resizable().scaledToFit().frame(maxHeight: 400)
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxHeight: 400)
+                    .overlay(Rectangle().strokeBorder(Theme.paperEdge, lineWidth: 1))
+                    .layoutPriority(-1)
+                    .accessibilityLabel("Picture of the page")
             }
-            NativeShareButton(items: items).frame(width: 140, height: 32)
-            Button("Close") { dismiss() }.keyboardShortcut(.cancelAction)
+            NativeShareButton(items: items)
+                .fixedSize()
         }
         .padding(24)
-        .frame(minWidth: 400, minHeight: 400)
+        .frame(minWidth: 400, minHeight: 360)
         .background(PaperBackground())
+        .paperSheet("Share this page", confirm: SheetAction(title: "Close", systemImage: "xmark") { dismiss() })
     }
 }
 
@@ -26,6 +32,10 @@ private struct NativeShareButton: NSViewRepresentable {
     func makeNSView(context: Context) -> NSButton {
         let button = NSButton(title: "Share…", target: context.coordinator, action: #selector(Coordinator.share(_:)))
         button.bezelStyle = .rounded
+        // Sized by its title, so larger text isn't clipped; drawn light to match the paper.
+        button.controlSize = .large
+        button.appearance = NSAppearance(named: .aqua)
+        button.setAccessibilityLabel("Share")
         return button
     }
     func updateNSView(_ button: NSButton, context: Context) { context.coordinator.items = items }

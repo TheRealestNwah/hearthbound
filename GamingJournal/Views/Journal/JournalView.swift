@@ -365,8 +365,8 @@ struct JournalView: View {
         Button("Take up the quill", systemImage: "pencil.and.scribble") {
             writing = WriterRequest(entry: nil)
         }
-        .buttonStyle(.borderedProminent)
-        .tint(Theme.wax)
+        // The native prominent style drew pale and faint over the paper.
+        .buttonStyle(.wax)
         #else
         Button {
             writing = WriterRequest(entry: nil)

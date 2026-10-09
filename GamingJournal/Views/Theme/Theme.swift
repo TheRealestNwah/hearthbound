@@ -13,14 +13,17 @@ enum Theme {
 
     /// Aged paper.
     static let paper = dynamic(light: 0xEFE2C6, dark: 0xC2AE88)
-    /// The darker, scorched edge of a page.
-    static let paperEdge = dynamic(light: 0xC9AC7C, dark: 0x8E7652)
+    /// The darker, scorched edge of a page. Every page text colour stays readable on it too, since
+    /// text in a margin sits close to the edge (ThemeTests checks both surfaces).
+    static let paperEdge = dynamic(light: 0xC9AC7C, dark: 0xAA946F, highContrastLight: 0xDCC8A2, highContrastDark: 0xB7A27D)
     /// Written text.
-    static let ink = dynamic(light: 0x2E2117, dark: 0x1E150E)
-    /// Captions, page numbers and hints.
-    static let fadedInk = dynamic(light: 0x5E4631, dark: 0x3E2C1C)
+    static let ink = dynamic(light: 0x2E2117, dark: 0x1E150E, highContrastLight: 0x1E150E, highContrastDark: 0x120C07)
+    /// Captions, page numbers and hints. Use it at full strength: fading it further drops below AA.
+    static let fadedInk = dynamic(light: 0x543E2B, dark: 0x302217, highContrastLight: 0x3E2C1C, highContrastDark: 0x241910)
     /// Red ink for dates and actions, like a scribe's rubric.
-    static let rubric = dynamic(light: 0x7A2E1C, dark: 0x5E1F12)
+    static let rubric = dynamic(light: 0x74291A, dark: 0x561A0F, highContrastLight: 0x5E1F12, highContrastDark: 0x45130A)
+    /// The light text on a wax-red action such as "Take up the quill".
+    static let waxInk = Color(hex: 0xF3E6CC)
 
     // MARK: Shelf
 
@@ -71,14 +74,24 @@ enum Theme {
 
     // MARK: Helpers
 
-    static func dynamic(light: UInt32, dark: UInt32) -> Color {
+    /// A colour for light and dark mode, optionally with stronger variants for Increase Contrast.
+    static func dynamic(light: UInt32, dark: UInt32, highContrastLight: UInt32? = nil, highContrastDark: UInt32? = nil) -> Color {
+        let lightHigh = highContrastLight ?? light
+        let darkHigh = highContrastDark ?? dark
         #if os(macOS)
-        Color(nsColor: NSColor(name: nil) { appearance in
-            NSColor(hex: appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light)
+        return Color(nsColor: NSColor(name: nil) { appearance in
+            switch appearance.bestMatch(from: [.aqua, .darkAqua, .accessibilityHighContrastAqua, .accessibilityHighContrastDarkAqua]) {
+            case .darkAqua: NSColor(hex: dark)
+            case .accessibilityHighContrastAqua: NSColor(hex: lightHigh)
+            case .accessibilityHighContrastDarkAqua: NSColor(hex: darkHigh)
+            default: NSColor(hex: light)
+            }
         })
         #else
-        Color(UIColor { traits in
-            UIColor(hex: traits.userInterfaceStyle == .dark ? dark : light)
+        return Color(UIColor { traits in
+            let high = traits.accessibilityContrast == .high
+            if traits.userInterfaceStyle == .dark { return UIColor(hex: high ? darkHigh : dark) }
+            return UIColor(hex: high ? lightHigh : light)
         })
         #endif
     }

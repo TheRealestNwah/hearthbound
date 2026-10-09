@@ -15,13 +15,13 @@ struct RemindersSection: View {
                 DatePicker("Time", selection: eveningDate, displayedComponents: .hourAndMinute)
             }
         } header: {
-            Text("Reminder")
+            PaperSectionHeader("Reminder")
         } footer: {
-            Text(permissionRefused
+            PaperSectionFooter(permissionRefused
                  ? "Notifications are off for Hearthbound. Turn them on in the Settings app to get reminders."
                  : "A nudge each day at the time you pick to set down what your character did.")
         }
-        .listRowBackground(Theme.paper.opacity(0.6))
+        .paperRow()
         .onChange(of: evening) { _, isOn in
             if isOn {
                 confirmPermission { evening = false }
