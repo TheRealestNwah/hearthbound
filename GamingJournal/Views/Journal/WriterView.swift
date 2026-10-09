@@ -9,8 +9,9 @@ struct WriterView: View {
     let journal: Journal
     private let entry: Entry?
     @State private var draft: EntryDraft
-    /// The page as it opened, to tell whether × would throw anything away.
-    private let original: EntryDraft
+    /// The page as it opened, to tell whether × would throw anything away. Held in state so a
+    /// parent redraw re-running `init` can't restamp a new page's date and make it look edited.
+    @State private var original: EntryDraft
     @State private var isConfirmingDiscard = false
     /// An unfinished new entry left in this journal, offered back until the writer decides.
     @State private var unfinished: DraftShelf.Saved?
@@ -32,7 +33,7 @@ struct WriterView: View {
         self.journal = journal
         self.entry = entry
         let original = entry.map(EntryDraft.init(entry:)) ?? EntryDraft.new(in: journal)
-        self.original = original
+        _original = State(initialValue: original)
         _draft = State(initialValue: original)
         _unfinished = State(initialValue: entry == nil ? DraftShelf().saved(for: journal.id) : nil)
     }
