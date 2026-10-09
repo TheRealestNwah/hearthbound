@@ -24,10 +24,12 @@ struct EntryDraft: Equatable {
     }
 
     /// A fresh page, dated and placed like the journal's latest entry so the writer only has to
-    /// nudge it.
+    /// nudge it. A journal's first page starts on its calendar's opening date, if it has one.
     static func new(in journal: Journal, now: Date = .now) -> EntryDraft {
-        let latest = journal.latestEntry
-        return EntryDraft(inGameDate: latest?.inGameDate ?? "", place: latest?.place ?? "", writtenAt: now)
+        guard let latest = journal.latestEntry else {
+            return EntryDraft(inGameDate: journal.calendar.firstDate ?? "", writtenAt: now)
+        }
+        return EntryDraft(inGameDate: latest.inGameDate, place: latest.place, writtenAt: now)
     }
 
     init(entry: Entry) {

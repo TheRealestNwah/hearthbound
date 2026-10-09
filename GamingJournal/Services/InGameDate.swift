@@ -31,6 +31,16 @@ enum InGameDate {
             ?? nextNumberedDay(after: trimmed)
     }
 
+    /// The calendar `text` is written in, when it's one this can step on.
+    static func calendar(of text: String) -> JournalCalendar? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if nextTamrielDay(after: trimmed) != nil { return .tamriel }
+        if nextHarptosDay(after: trimmed) != nil { return .harptos }
+        if nextGregorianDay(after: trimmed) != nil { return .realWorld }
+        if nextNumberedDay(after: trimmed) != nil { return .dayCount }
+        return nil
+    }
+
     /// "1st", "2nd", "3rd", "4th", "11th", "22nd"…
     static func ordinal(_ day: Int) -> String {
         let suffix: String

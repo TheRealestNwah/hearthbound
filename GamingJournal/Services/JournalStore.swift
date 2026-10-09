@@ -92,6 +92,7 @@ enum JournalStore {
         let epithet = journal.epithet
         let game = journal.gameTitle
         let cover = journal.coverStyleRaw
+        let calendar = journal.calendarRaw
         let updated = journal.updatedAt
         let entries = journal.entries
         let values = includingEntries ? (entries ?? []).map(EntryValues.init) : []
@@ -100,6 +101,7 @@ enum JournalStore {
             journal.epithet = epithet
             journal.gameTitle = game
             journal.coverStyleRaw = cover
+            journal.calendarRaw = calendar
             journal.updatedAt = updated
             journal.entries = entries
             for entry in values { entry.restore() }

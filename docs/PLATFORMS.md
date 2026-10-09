@@ -18,6 +18,8 @@ CI first builds/tests the native Mac scheme with shared unit tests and Mac-speci
 
 ## Writing and recovery
 
+Each journal has a **Calendar** in its editor: Tamriel, Forgotten Realms, Real-world, Day count or Free text. It sets the date hint, gives the first page a starting date, and is suggested from the game's name for a new journal ("Skyrim" picks Tamriel). Dates stay free text, **Next day** steps any recognised date, and changing the calendar never alters written pages. Journals from before calendars show the calendar their latest date is written in when edited.
+
 New entry text, date and place are kept locally while writing. **Keep Draft** returns to the book without publishing the entry; the shelf shows **Continue unfinished page**. Resolve an existing unfinished page before beginning another. Pictures are retained only by saving the entry, and edits to an existing entry are retained only by saving; the writer explains both limits. Keep Draft asks before leaving attached pictures behind.
 
 Saving waits for picture imports to finish. Import progress and failed picture names are shown, and successful pictures stay available when another fails. On Mac, use Photos, the file picker or drop picture files onto the writer. Failed entry/journal saves keep the editor open for retry. PDF/Markdown write failures are reported separately from cancellation.

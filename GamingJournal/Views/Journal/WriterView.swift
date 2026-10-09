@@ -51,7 +51,7 @@ struct WriterView: View {
                 }
 
                 Group {
-                    TextField("In-game date", text: $draft.inGameDate, prompt: Text("In-game date, e.g. 17th of Last Seed").foregroundStyle(Theme.fadedInk))
+                    TextField("In-game date", text: $draft.inGameDate, prompt: Text(journal.calendar.placeholder).foregroundStyle(Theme.fadedInk))
                         .font(Theme.dateLine)
                         .foregroundStyle(Theme.rubric)
                         .capitalizedWords()

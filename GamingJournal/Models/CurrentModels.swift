@@ -2,7 +2,7 @@ import Foundation
 import SwiftData
 
 /// The schema the app reads and writes.
-typealias CurrentSchema = HearthboundSchemaV2
+typealias CurrentSchema = HearthboundSchemaV3
 
 typealias Journal = CurrentSchema.Journal
 typealias Entry = CurrentSchema.Entry
@@ -10,15 +10,18 @@ typealias EntryPhoto = CurrentSchema.EntryPhoto
 
 enum HearthboundMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] {
-        [HearthboundSchemaV1.self, HearthboundSchemaV2.self]
+        [HearthboundSchemaV1.self, HearthboundSchemaV2.self, HearthboundSchemaV3.self]
     }
 
     static var stages: [MigrationStage] {
-        [v1ToV2]
+        [v1ToV2, v2ToV3]
     }
 
     /// Adds `Entry.place`, which defaults to empty.
     static let v1ToV2 = MigrationStage.lightweight(fromVersion: HearthboundSchemaV1.self, toVersion: HearthboundSchemaV2.self)
+
+    /// Adds `Journal.calendarRaw`, which defaults to empty (free text).
+    static let v2ToV3 = MigrationStage.lightweight(fromVersion: HearthboundSchemaV2.self, toVersion: HearthboundSchemaV3.self)
 }
 
 // MARK: - Journal
@@ -27,6 +30,12 @@ extension Journal {
     var coverStyle: CoverStyle {
         get { CoverStyle(rawValue: coverStyleRaw) ?? .ember }
         set { coverStyleRaw = newValue.rawValue }
+    }
+
+    /// The game's calendar, which shapes the writer's date hint. Free text unless chosen.
+    var calendar: JournalCalendar {
+        get { JournalCalendar(rawValue: calendarRaw) ?? .freeText }
+        set { calendarRaw = newValue.rawValue }
     }
 
     /// "The Journal of Eira Stormborn".

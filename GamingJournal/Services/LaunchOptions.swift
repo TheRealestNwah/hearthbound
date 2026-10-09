@@ -64,7 +64,7 @@ enum DemoData {
             calendar.date(byAdding: .day, value: -days, to: now) ?? now
         }
         let journal = Journal(characterName: "Eira Stormborn", epithet: "Nord", gameTitle: "Skyrim",
-                              coverStyle: .ember, createdAt: daysAgo(5))
+                              coverStyle: .ember, calendar: .tamriel, createdAt: daysAgo(5))
         journal.entries = [
             Entry(body: "The cart ride ended at a headsman's block. Then the sky tore open and a dragon came down on Helgen. I ran with a stranger named Ralof and did not look back at the smoke.",
                   inGameDate: "16th of Last Seed, 4E 201", writtenAt: daysAgo(4)),
