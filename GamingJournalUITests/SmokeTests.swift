@@ -35,6 +35,13 @@ final class SmokeTests: XCTestCase {
         app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
     }
 
+    /// Waits for a sheet to finish sliding away. While it closes, the reader behind it is
+    /// still scaled down and its controls can't be tapped.
+    private func waitForSheetToClose(_ marker: XCUIElement) {
+        let closed = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: marker)
+        wait(for: [closed], timeout: Self.step)
+    }
+
     /// Taps a field and types into it. A tap that lands while a sheet is still sliding in can miss
     /// the field, so tap again (a few times at most) until it reports keyboard focus (#111).
     private func type(_ text: String, into field: XCUIElement) {
@@ -249,6 +256,7 @@ final class SmokeTests: XCTestCase {
         capture("\(tag)-new-journal-filled", in: app)
         XCTAssertTrue(app.buttons["Begin"].isHittable)
         app.buttons["Cancel"].tap()
+        waitForSheetToClose(name)
 
         let journal = element(containing: "Eira Stormborn", in: app)
         XCTAssertTrue(journal.waitForExistence(timeout: Self.step))
@@ -263,6 +271,7 @@ final class SmokeTests: XCTestCase {
         capture("\(tag)-writer-empty", in: app)
         XCTAssertTrue(app.buttons["Cancel"].isHittable)
         app.buttons["Cancel"].tap()
+        waitForSheetToClose(app.textViews["entryBody"])
 
         app.buttons["contents"].tap()
         let search = app.textFields["Search this journal"]
@@ -271,6 +280,7 @@ final class SmokeTests: XCTestCase {
         type("nothing like this", into: search)
         capture("\(tag)-contents-none", in: app)
         app.buttons["Close"].tap()
+        waitForSheetToClose(search)
 
         app.buttons["Back to journals"].tap()
         app.buttons["Settings"].tap()
