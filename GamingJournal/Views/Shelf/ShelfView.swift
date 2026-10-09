@@ -16,6 +16,8 @@ struct ShelfView: View {
     @State private var isShowingSettings = false
     @State private var query = ""
     @State private var isSearching = false
+    @State private var opening: BookOpening?
+    @State private var bookFrames = BookFrames()
     @FocusState private var searchFocused: Bool
 
     var body: some View {
@@ -75,6 +77,12 @@ struct ShelfView: View {
                             onSettings: { isShowingSettings = true }, onNewJournal: { isCreating = true })
             }
         }
+        .overlay {
+            if let opening {
+                BookOpeningOverlay(opening: opening)
+                    .transition(.opacity)
+            }
+        }
         .journalCommandActions(isCreating || editing != nil || isShowingSettings || resuming != nil ? JournalCommandActions() :
             JournalCommandActions(settings: { isShowingSettings = true }, newJournal: { isCreating = true },
                                   find: journals.isEmpty ? nil : { isSearching = true; searchFocused = true }))
@@ -104,6 +112,7 @@ struct ShelfView: View {
                     try JournalStore.commit(in: context, restore: JournalStore.restoration(for: journal, includingEntries: true)) { context.delete(journal) }
                     path.removeAll { $0.journal.id == id }
                     DraftShelf().discard(for: id)
+                    ShelfMemory().forget(id)
                     RibbonShelf().setMark(nil, for: id)
                 } catch { errorMessage = "The journal could not be deleted. " + error.localizedDescription }
             }
@@ -115,16 +124,20 @@ struct ShelfView: View {
         #endif
     }
 
-    /// The journals on the shelf, or a pointer to + when there are none.
+    /// The journals on the shelf, or a blank book to begin one when there are none.
     @ViewBuilder
     private var books: some View {
         let _ = draftRevision
+        let lastOpened = ShelfMemory().lastOpened
         ForEach(journals) { journal in
-            NavigationLink(value: JournalRoute(journal: journal)) {
-                ShelfBook(name: journal.characterName, subtitle: journal.subtitle, style: journal.coverStyle)
+            Button { open(journal) } label: {
+                cover(for: journal, isLastOpened: journal.id == lastOpened)
             }
             .buttonStyle(.plain)
             .accessibilityHint("Opens the journal")
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { [bookFrames] frame in
+                bookFrames.frames[journal.id] = frame
+            }
             .contextMenu {
                 Button("Edit", systemImage: "pencil") { editing = journal }
                 Button("Delete", systemImage: "trash", role: .destructive) { pendingDelete = journal }
@@ -141,10 +154,41 @@ struct ShelfView: View {
             }
         }
         if journals.isEmpty {
-            Text("Tap + to begin a journal.")
-                .font(Theme.bookItalic(18, relativeTo: .body))
-                .foregroundStyle(Theme.woodFaded)
-                .padding(.top, 24)
+            Button { isCreating = true } label: { BlankBook() }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("blankJournal")
+                .padding(.top, 12)
+        }
+    }
+
+    /// A journal's cover, with its latest entry's date as a quiet note of where the story stands.
+    private func cover(for journal: Journal, isLastOpened: Bool) -> ShelfBook {
+        ShelfBook(name: journal.characterName, subtitle: journal.subtitle, style: journal.coverStyle,
+                  caption: journal.latestEntry.map { "Last entry: \($0.heading())" } ?? "",
+                  isLastOpened: isLastOpened)
+    }
+
+    /// Opens a journal: the book comes forward and its cover swings open onto the reader. With
+    /// Reduce Motion, or under UI tests (whose screenshots would catch it mid-way), the reader
+    /// opens at once.
+    private func open(_ journal: Journal) {
+        guard opening == nil else { return }
+        let route = JournalRoute(journal: journal)
+        guard !reduceMotion, !LaunchOptions.isUITesting, let frame = bookFrames.frames[journal.id] else {
+            path.append(route)
+            return
+        }
+        opening = BookOpening(cover: cover(for: journal, isLastOpened: journal.id == ShelfMemory().lastOpened), frame: frame)
+        // A turn later, so the overlay is drawn where the book lies before it moves.
+        DispatchQueue.main.async {
+            withAnimation(.easeOut(duration: 0.25)) { opening?.stage = .forward } completion: {
+                withAnimation(.easeInOut(duration: 0.3)) { opening?.stage = .open } completion: {
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) { path.append(route) }
+                    withAnimation(.easeIn(duration: 0.2).delay(0.05)) { opening = nil }
+                }
+            }
         }
     }
 

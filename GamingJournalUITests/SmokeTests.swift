@@ -72,7 +72,10 @@ final class SmokeTests: XCTestCase {
 
     func testBeginningAJournalAndWritingAnEntry() {
         let app = launch()
-        app.buttons["Begin a new journal"].tap()
+        // The empty shelf offers a blank book to begin with.
+        let blank = app.buttons["blankJournal"]
+        XCTAssertTrue(blank.waitForExistence(timeout: Self.step))
+        blank.tap()
 
         type("Eira Stormborn", into: app.textFields["characterName"])
         app.navigationBars["New Journal"].buttons["Begin"].tap()
