@@ -37,6 +37,7 @@ struct GamingJournalApp: App {
         Window("Hearthbound", id: "journals") {
             RootView()
                 .environment(appLock)
+                .appLock(appLock)
                 .uiTestLook()
                 .frame(minWidth: 640, minHeight: 540)
         }
@@ -44,7 +45,7 @@ struct GamingJournalApp: App {
         .defaultSize(width: LaunchOptions.compactWindow ? 640 : 1100, height: LaunchOptions.compactWindow ? 540 : 800)
         .commands {
             // Keep one journal workflow while using normal Mac launch/reopen behavior.
-            JournalCommands()
+            JournalCommands(lock: appLock)
             TextEditingCommands()
         }
         #else

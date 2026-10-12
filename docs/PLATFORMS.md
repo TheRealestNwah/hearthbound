@@ -10,7 +10,9 @@ The Mac target shares models, migrations, local storage, optional iCloud sync, j
 
 The iOS bundle IDs, widgets and cloud container have not been renamed. The native Mac app uses the same main bundle identity and CloudKit container. Signed distribution must provision the Mac app group, iCloud and push capabilities. CI uses unsigned, isolated in-memory app data and cannot validate signing, iCloud, Touch ID or notification delivery.
 
-Initial Mac limits: no app-lock UI, camera capture or desktop widget extension. iOS locking stays unchanged. Mac lock/privacy coverage and desktop widgets need their own implementation and acceptance before being advertised. Test Shortcuts/Spotlight, notifications, Photos library authorization, native sharing and sandboxed file dialogs on a signed build. Confirm import/export round trips and cross-device edits/deletes/photos with a test iCloud account before release.
+Mac limits: no camera capture or desktop widget extension (#239).
+
+The Mac journal lock (#238) shares iOS's `AppLock` and asks for Touch ID or the login password. When on, the app opens sealed and seals again when it's hidden, its window is minimised or closed, the screen locks or sleeps, or another user takes over; switching to another app leaves it open. While sealed, the window and every open sheet show the closed shelf, their content is disabled and hidden from VoiceOver, and the journal menu commands are off. It needs no entitlement, so the Mac Free Team scheme can test it. Check on a Mac: each sealing trigger, that the unlock prompt comes back once (not in a loop) after a cancel, that a sheet left open (the writer, Settings) is covered, and whether the Dock thumbnail of a minimised window shows a page. Test Shortcuts/Spotlight, notifications, Photos library authorization, native sharing and sandboxed file dialogs on a signed build. Confirm import/export round trips and cross-device edits/deletes/photos with a test iCloud account before release.
 
 ## Validation
 

@@ -1,5 +1,6 @@
-#if os(iOS)
 import SwiftUI
+
+#if os(iOS)
 import UIKit
 
 extension View {
@@ -8,6 +9,9 @@ extension View {
     func appLock(_ lock: AppLock) -> some View {
         modifier(AppLockModifier(lock: lock))
     }
+
+    /// iOS covers sheets from its own window, so they need nothing extra.
+    func lockCover() -> some View { self }
 }
 
 private struct AppLockModifier: ViewModifier {
@@ -79,9 +83,112 @@ private final class LockWindow {
     }
 }
 
+#endif
+
+#if os(macOS)
+import AppKit
+import Combine
+
+extension View {
+    /// Covers the window while the journal is locked and seals it whenever the owner steps away:
+    /// the app is hidden, its window minimised or closed, the screen locked or asleep, or another
+    /// user takes over. Switching to another app leaves it open.
+    func appLock(_ lock: AppLock) -> some View {
+        modifier(MacAppLockModifier(lock: lock))
+    }
+
+    /// Covers a sheet's own window too. Mac sheets are separate windows, so the window's cover
+    /// doesn't reach them.
+    func lockCover() -> some View {
+        modifier(LockCoverModifier())
+    }
+}
+
+private struct MacAppLockModifier: ViewModifier {
+    let lock: AppLock
+    /// Only a return from stepping away should prompt: the Touch ID panel itself makes the app
+    /// briefly inactive, and prompting on that would loop after a cancel.
+    @State private var promptOnReturn = false
+
+    private static let sealing: [Notification.Name] = [
+        NSApplication.didHideNotification,
+        NSWindow.willMiniaturizeNotification,
+    ]
+    private static let workspaceSealing: [Notification.Name] = [
+        NSWorkspace.screensDidSleepNotification,
+        NSWorkspace.willSleepNotification,
+        NSWorkspace.sessionDidResignActiveNotification,
+    ]
+
+    func body(content: Content) -> some View {
+        content
+            .modifier(LockCover(lock: lock))
+            .onAppear {
+                if lock.isLocked && NSApp.isActive { prompt() }
+            }
+            // Closing the window keeps the app running; it reopens sealed.
+            .onDisappear { seal() }
+            .onReceive(merged(NotificationCenter.default, Self.sealing)) { _ in seal() }
+            .onReceive(merged(NSWorkspace.shared.notificationCenter, Self.workspaceSealing)) { _ in seal() }
+            .onReceive(DistributedNotificationCenter.default().publisher(for: .init("com.apple.screenIsLocked"))) { _ in seal() }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in returned() }
+            .onReceive(NotificationCenter.default.publisher(for: NSWindow.didDeminiaturizeNotification)) { _ in returned() }
+            .onReceive(DistributedNotificationCenter.default().publisher(for: .init("com.apple.screenIsUnlocked"))) { _ in returned() }
+    }
+
+    private func merged(_ center: NotificationCenter, _ names: [Notification.Name]) -> some Publisher<Notification, Never> {
+        Publishers.MergeMany(names.map { center.publisher(for: $0) })
+    }
+
+    private func seal() {
+        guard lock.isEnabled else { return }
+        lock.seal()
+        promptOnReturn = true
+    }
+
+    private func returned() {
+        guard promptOnReturn, NSApp.isActive else { return }
+        promptOnReturn = false
+        prompt()
+    }
+
+    private func prompt() {
+        Task { await lock.unlock() }
+    }
+}
+
+private struct LockCoverModifier: ViewModifier {
+    @Environment(AppLock.self) private var lock
+
+    func body(content: Content) -> some View {
+        content.modifier(LockCover(lock: lock))
+    }
+}
+
+/// The sealed shelf over a window's content.
+private struct LockCover: ViewModifier {
+    let lock: AppLock
+
+    func body(content: Content) -> some View {
+        content
+            // Hidden from VoiceOver and the keyboard too, not just covered.
+            .disabled(lock.isLocked)
+            .accessibilityHidden(lock.isLocked)
+            .overlay {
+                if lock.isLocked {
+                    LockScreen(lock: lock, promptsOnAppear: false)
+                }
+            }
+    }
+}
+#endif
+
 /// The closed journal, with a way to open it.
 private struct LockScreen: View {
     let lock: AppLock
+    /// Asks straight away. Off on Mac, where the cover also shows while the app is hidden, so
+    /// the prompt waits for the owner to come back.
+    var promptsOnAppear = true
 
     var body: some View {
         ZStack {
@@ -107,7 +214,9 @@ private struct LockScreen: View {
             .multilineTextAlignment(.center)
             .padding(32)
         }
-        .task { await lock.unlock() }
+        .task {
+            if promptsOnAppear { await lock.unlock() }
+        }
     }
 }
 
@@ -119,5 +228,3 @@ private struct SealedCover: View {
             .accessibilityHidden(true)
     }
 }
-
-#endif

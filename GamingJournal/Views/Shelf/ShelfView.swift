@@ -93,12 +93,15 @@ struct ShelfView: View {
         } message: { Text(errorMessage ?? "") }
         .sheet(isPresented: $isCreating) {
             JournalEditorView { journal in path = [JournalRoute(journal: journal)] }
+                .lockCover()
         }
         .sheet(item: $editing) { journal in
             JournalEditorView(journal: journal)
+                .lockCover()
         }
         .sheet(isPresented: $isShowingSettings) {
             SettingsView()
+                .lockCover()
         }
         .confirmationDialog(
             "Delete this journal?",

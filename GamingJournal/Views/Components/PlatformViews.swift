@@ -68,14 +68,14 @@ extension View {
     }
     @ViewBuilder func journalCover<Item: Identifiable, Content: View>(item: Binding<Item?>, @ViewBuilder content: @escaping (Item) -> Content) -> some View {
         #if os(macOS)
-        sheet(item: item) { item in content(item).journalSheetSize() }
+        sheet(item: item) { item in content(item).journalSheetSize().lockCover() }
         #else
         fullScreenCover(item: item, content: content)
         #endif
     }
     @ViewBuilder func journalCover<Content: View>(isPresented: Binding<Bool>, @ViewBuilder content: @escaping () -> Content) -> some View {
         #if os(macOS)
-        sheet(isPresented: isPresented) { content().journalSheetSize() }
+        sheet(isPresented: isPresented) { content().journalSheetSize().lockCover() }
         #else
         fullScreenCover(isPresented: isPresented, content: content)
         #endif
