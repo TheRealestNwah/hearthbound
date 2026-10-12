@@ -97,9 +97,14 @@ struct WriteAsProvider: AppIntentTimelineProvider {
     }
 }
 
-/// A character's journal on the Home or Lock Screen: tap to write in it.
+/// A character's journal on the Home or Lock Screen (or the Mac desktop): tap to write in it.
 struct WriteAsWidget: Widget {
     static let kind = "WriteAs"
+    #if os(iOS)
+    static let families: [WidgetFamily] = [.systemSmall, .accessoryCircular, .accessoryRectangular]
+    #else
+    static let families: [WidgetFamily] = [.systemSmall]
+    #endif
 
     var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: Self.kind, intent: WriteAsConfiguration.self, provider: WriteAsProvider()) { entry in
@@ -109,7 +114,7 @@ struct WriteAsWidget: Widget {
         }
         .configurationDisplayName("Write in…")
         .description("Open a new page in a character's journal.")
-        .supportedFamilies([.systemSmall, .accessoryCircular, .accessoryRectangular])
+        .supportedFamilies(Self.families)
     }
 }
 
@@ -121,6 +126,7 @@ struct WriteAsView: View {
 
     var body: some View {
         switch family {
+        #if os(iOS)
         case .accessoryCircular:
             ZStack {
                 AccessoryWidgetBackground()
@@ -144,6 +150,7 @@ struct WriteAsView: View {
                         .lineLimit(1)
                 }
             }
+        #endif
         default:
             VStack(alignment: .leading, spacing: 6) {
                 Image(systemName: "pencil.and.scribble")
@@ -176,6 +183,7 @@ struct WriteAsView: View {
 
 // MARK: Control
 
+#if os(iOS)
 /// Control Center and Lock Screen button that opens a new page (iOS 18).
 @available(iOS 18.0, *)
 struct WriteControl: ControlWidget {
@@ -189,3 +197,4 @@ struct WriteControl: ControlWidget {
         .description("Open a new page in your latest journal.")
     }
 }
+#endif
