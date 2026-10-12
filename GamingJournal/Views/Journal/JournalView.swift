@@ -253,12 +253,14 @@ struct JournalView: View {
         .sheet(item: $sharing) { shared in
             ShareSheet(items: [shared.image])
                 .presentationDetents([.medium, .large])
+                .lockCover()
         }
         .journalCover(item: $writing) { request in
             WriterView(journal: journal, entry: request.entry)
         }
         .sheet(isPresented: $isEditingJournal) {
             JournalEditorView(journal: journal)
+                .lockCover()
         }
         .sheet(isPresented: $isShowingContents) {
             let laidOut = pages
@@ -278,6 +280,7 @@ struct JournalView: View {
                 }
                 settle(animated: true)
             }
+            .lockCover()
         }
         .confirmationDialog(
             "Tear out this entry?",

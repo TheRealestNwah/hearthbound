@@ -22,7 +22,7 @@ The app is called **Hearthbound**. Its Xcode targets, schemes, bundle IDs, app g
 ## Native Mac
 - `Hearthbound (Mac)` is a native macOS 14+ SwiftUI/AppKit scheme sharing the app source folder. `Hearthbound (Mac Free Team)` mirrors free-team identities without cloud entitlements.
 - Guard UIKit/AppKit differences at the platform boundary. Keep models, migrations and journal logic shared. See `docs/PLATFORMS.md` for features and manual acceptance.
-- Mac currently has no app-lock UI, camera capture or widget extension. Do not imply those are supported.
+- Mac has the journal lock (Touch ID or password; seals on hide, minimise, window close, screen lock or sleep). It has no camera capture or widget extension (#239). Do not imply those are supported.
 
 ## CI
 - macOS runners are the bottleneck: only a few run at once, and every run holds one for ~5 min. Avoid pushing several PR branches at the same time. Push or rebase them one after another so they don't queue behind each other.

@@ -4,7 +4,7 @@ import Observation
 
 /// Face ID, Touch ID or passcode, so tests can stand in for the device.
 protocol Authenticating {
-    /// "Face ID", "Touch ID" or "Passcode": what unlocking will ask for.
+    /// "Face ID", "Touch ID", "Passcode" or, on Mac, "Password": what unlocking will ask for.
     var method: String { get }
     func authenticate(reason: String) async -> Bool
 }
@@ -17,7 +17,12 @@ struct DeviceAuthenticator: Authenticating {
         case .faceID: return "Face ID"
         case .touchID: return "Touch ID"
         case .opticID: return "Optic ID"
-        default: return "Passcode"
+        default:
+            #if os(macOS)
+            return "Password"
+            #else
+            return "Passcode"
+            #endif
         }
     }
 
@@ -28,7 +33,7 @@ struct DeviceAuthenticator: Authenticating {
 }
 
 /// An optional lock on the whole journal. When on, the app opens sealed and seals itself again
-/// whenever it goes to the background.
+/// whenever it goes to the background (on Mac: is hidden, minimised, closed or the screen locks).
 @Observable
 final class AppLock {
     static let enabledKey = "lock.enabled"

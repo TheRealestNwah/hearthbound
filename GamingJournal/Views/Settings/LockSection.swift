@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Privacy settings: the journal lock (changing it asks the owner to authenticate first) and
-/// whether the journal shows up in iOS search.
+/// whether the journal shows up in Spotlight.
 struct LockSection: View {
     @Environment(AppLock.self) private var lock
     @State private var isChanging = false
@@ -24,8 +24,14 @@ struct LockSection: View {
         } header: {
             PaperSectionHeader("Privacy")
         } footer: {
-            PaperSectionFooter("The lock seals your journals whenever you leave the app: they hide from the app switcher, and the widget and iOS search stop showing your writing. Spotlight lets you find journals and entries from iOS search.")
+            PaperSectionFooter(Self.footer)
         }
         .paperRow()
     }
+
+    #if os(macOS)
+    private static let footer = "The lock seals your journals whenever you hide Hearthbound, minimise or close its window, or lock your Mac, and Spotlight stops showing your writing. Spotlight lets you find journals and entries from Mac search."
+    #else
+    private static let footer = "The lock seals your journals whenever you leave the app: they hide from the app switcher, and the widget and iOS search stop showing your writing. Spotlight lets you find journals and entries from iOS search."
+    #endif
 }

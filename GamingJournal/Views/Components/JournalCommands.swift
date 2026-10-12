@@ -18,7 +18,10 @@ extension FocusedValues {
     }
 }
 struct JournalCommands: Commands {
-    @FocusedValue(\.journalActions) private var actions
+    let lock: AppLock
+    @FocusedValue(\.journalActions) private var focusedActions
+    /// Nothing opens from the menu while the journal is sealed.
+    private var actions: JournalCommandActions? { lock.isLocked ? nil : focusedActions }
     var body: some Commands {
         CommandGroup(replacing: .appSettings) {
             Button("Settings…") { actions?.settings?() }
