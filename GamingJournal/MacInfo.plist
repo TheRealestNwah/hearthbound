@@ -4,6 +4,8 @@
 <dict>
 	<key>AppGroup</key>
 	<string>$(APP_GROUP)</string>
+	<key>CloudKitContainer</key>
+	<string>$(ICLOUD_CONTAINER)</string>
 	<key>CFBundleName</key>
 	<string>Hearthbound</string>
 	<key>NSPrincipalClass</key>
@@ -14,7 +16,7 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.gamingjournal.GamingJournal</string>
+			<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>gamingjournal</string>

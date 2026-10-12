@@ -1,0 +1,21 @@
+// The identifiers Hearthbound signs with. Bundle IDs, app groups and the iCloud container are
+// unique across all Apple developer teams, and these defaults belong to the maintainer's team.
+//
+// Building from source with your own team? Create Config/Local.xcconfig (gitignored) with one line:
+//
+//     BUNDLE_ID_PREFIX = com.yourname
+//
+// Every bundle ID, app group and the iCloud container follow from it. Leave the defaults alone in
+// this file: changing them would cut existing installs off from their data, widgets and sync.
+
+BUNDLE_ID_PREFIX = com.gamingjournal
+
+// Shared with the widgets. A free personal team can't be granted a `group.`-prefixed group on Mac
+// (#234), so the Mac Free Team build uses one named after the team instead.
+APP_GROUP = group.$(BUNDLE_ID_PREFIX).GamingJournal
+APP_GROUP[config=FreeTeam] = group.$(BUNDLE_ID_PREFIX).GamingJournal.free
+APP_GROUP[config=FreeTeam][sdk=macosx*] = $(TeamIdentifierPrefix)$(BUNDLE_ID_PREFIX).GamingJournal.free
+
+ICLOUD_CONTAINER = iCloud.$(BUNDLE_ID_PREFIX).GamingJournal
+
+#include? "Local.xcconfig"

@@ -12,6 +12,7 @@ The app is called **Hearthbound**. Its Xcode targets, schemes, bundle IDs, app g
 - The Xcode project uses synchronized folders: new files in these folders are picked up without editing `project.pbxproj`. Only new targets, entitlements or build settings need pbxproj edits.
 
 ## Rules
+- Never hard-code a bundle ID, app group or iCloud container. They derive from `BUNDLE_ID_PREFIX` in `Config/Identity.xcconfig` (`APP_GROUP`, `ICLOUD_CONTAINER`, read in Swift through the `AppGroup` / `CloudKitContainer` Info.plist keys), so people building from source can override the prefix in a gitignored `Config/Local.xcconfig`. The defaults must never change.
 - **CI is the only build check.** Development happens on Windows, so nothing is compiled locally. Read the `xcodebuild-logs` artifact when a run fails.
 - SwiftData models must stay CloudKit-safe: every property has a default or is optional, no `@Attribute(.unique)`, relationships optional. Add schema changes as a new `VersionedSchema` plus a migration stage.
 - Put logic in `Services/` with tests; views stay thin. Page layout lives in `JournalPager`, in-game date stepping in `InGameDate`.
