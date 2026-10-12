@@ -77,6 +77,14 @@ With a free Apple ID, use the **Hearthbound (Free Team)** scheme instead:
 3. Under Signing & Capabilities, set Team to "(Your Name) Personal Team" for **GamingJournal** and **GamingJournalWidgets**.
 4. Turn on Developer Mode on the iPhone (Settings → Privacy & Security), then Run. The first time, trust your profile under Settings → General → VPN & Device Management.
 
+Step 3 has to happen in Xcode at least once: picking the team there is what registers the `.free` app group with Apple. Until then, command-line builds fail with "Provisioning profile … doesn't match the entitlements file's value for the com.apple.security.application-groups entitlement". Afterwards you can build and install without opening Xcode (replace the team ID and device ID with yours; `xcrun devicectl list devices` shows the device ID):
+
+```sh
+xcodebuild -project GamingJournal.xcodeproj -scheme "Hearthbound (Free Team)" -configuration FreeTeam \
+  -destination "id=<device-id>" -derivedDataPath build DEVELOPMENT_TEAM=<team-id> -allowProvisioningUpdates build
+xcrun devicectl device install app --device <device-id> build/Build/Products/FreeTeam-iphoneos/GamingJournal.app
+```
+
 The Free Team build uses its own `.free` bundle IDs and app group, so a free team never claims the real identifiers. It leaves out iCloud and push, so the iCloud Sync setting is hidden, and apps signed by a free team stop opening after 7 days until you run them from Xcode again.
 
 ## iCloud sync
