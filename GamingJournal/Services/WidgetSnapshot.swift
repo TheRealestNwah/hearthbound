@@ -4,14 +4,9 @@ import WidgetKit
 /// What the widgets show, written by the app to the shared App Group. The widget extension has a
 /// mirror of this type (`GamingJournalWidgets/Snapshot.swift`); keep the two in step.
 struct WidgetSnapshot: Codable, Equatable {
-    #if FREE_TEAM && os(macOS)
-    /// A free team can only share a Mac group named after its own team ID, which the build fills in.
-    static let appGroup = Bundle.main.object(forInfoDictionaryKey: "AppGroup") as? String ?? "group.com.gamingjournal.GamingJournal.free"
-    #elseif FREE_TEAM
-    static let appGroup = "group.com.gamingjournal.GamingJournal.free"
-    #else
-    static let appGroup = "group.com.gamingjournal.GamingJournal"
-    #endif
+    /// The shared App Group, from the `APP_GROUP` build setting (`Config/Identity.xcconfig`) by way of
+    /// the `AppGroup` Info.plist key, so builds signed with another bundle ID prefix find their own group.
+    static let appGroup = Bundle.main.object(forInfoDictionaryKey: "AppGroup") as? String ?? "group.com.gamingjournal.GamingJournal"
     static let key = "widgetSnapshot"
     /// Opens a new page: in the journal a link names, or else the most recent one.
     static let writeURL = URL(string: "gamingjournal://write")!

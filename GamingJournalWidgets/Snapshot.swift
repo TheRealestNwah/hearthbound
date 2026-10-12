@@ -4,14 +4,9 @@ import SwiftUI
 
 /// Mirror of the app's `WidgetSnapshot`, which the app writes into the shared App Group.
 struct Snapshot: Codable {
-    #if FREE_TEAM && os(macOS)
-    /// A free team can only share a Mac group named after its own team ID, which the build fills in.
-    static let appGroup = Bundle.main.object(forInfoDictionaryKey: "AppGroup") as? String ?? "group.com.gamingjournal.GamingJournal.free"
-    #elseif FREE_TEAM
-    static let appGroup = "group.com.gamingjournal.GamingJournal.free"
-    #else
-    static let appGroup = "group.com.gamingjournal.GamingJournal"
-    #endif
+    /// The shared App Group, from the `APP_GROUP` build setting (`Config/Identity.xcconfig`) by way of
+    /// the `AppGroup` Info.plist key, so builds signed with another bundle ID prefix find their own group.
+    static let appGroup = Bundle.main.object(forInfoDictionaryKey: "AppGroup") as? String ?? "group.com.gamingjournal.GamingJournal"
     static let key = "widgetSnapshot"
     static let writeURL = URL(string: "gamingjournal://write")!
 

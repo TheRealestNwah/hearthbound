@@ -14,3 +14,6 @@ build/
 *.ipa
 *.dSYM.zip
 *.dSYM
+
+# Per-developer signing identifiers (see Config/Identity.xcconfig)
+Config/Local.xcconfig

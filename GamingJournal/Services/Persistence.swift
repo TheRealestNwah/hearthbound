@@ -2,7 +2,8 @@ import Foundation
 import SwiftData
 
 enum Persistence {
-    static let cloudKitContainerID = "iCloud.com.gamingjournal.GamingJournal"
+    /// From the `ICLOUD_CONTAINER` build setting (`Config/Identity.xcconfig`) by way of the Info.plist.
+    static let cloudKitContainerID = Bundle.main.object(forInfoDictionaryKey: "CloudKitContainer") as? String ?? "iCloud.com.gamingjournal.GamingJournal"
     /// Store file name. The one-journal-per-character redesign started a fresh store rather than
     /// migrating the notebook one (nothing had shipped).
     static let storeName = "Journals"

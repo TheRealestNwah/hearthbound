@@ -6,7 +6,7 @@
 	<true/>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>$(TeamIdentifierPrefix)com.gamingjournal.GamingJournal.free</string>
+		<string>$(APP_GROUP)</string>
 	</array>
 </dict>
 </plist>

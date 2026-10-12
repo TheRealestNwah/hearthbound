@@ -68,6 +68,14 @@ The Mac version offers the journal lock (Touch ID or password) and desktop widge
 
 ## Running on your own device
 
+Bundle IDs, app groups and iCloud containers are unique across every Apple developer team, and the defaults belong to the maintainer's. Before signing with your own team, create `Config/Local.xcconfig` (it's gitignored) with your own reverse-DNS prefix:
+
+```
+BUNDLE_ID_PREFIX = com.yourname
+```
+
+Every bundle ID, app group and the iCloud container follow from it (see `Config/Identity.xcconfig`). Without it, Xcode stops with "The app identifier … cannot be registered to your development team because it is not available".
+
 With a paid Apple Developer team, pick it under Signing & Capabilities for the **GamingJournal** and **GamingJournalWidgets** targets and run the `GamingJournal` scheme.
 
 With a free Apple ID, use the **Hearthbound (Free Team)** scheme instead:
@@ -89,7 +97,7 @@ The Free Team build uses its own `.free` bundle IDs and app group, so a free tea
 
 ## iCloud sync
 
-Sync is optional and off by default (Settings → iCloud Sync, applied on next launch). It mirrors the SwiftData store to the user's private CloudKit database (`iCloud.com.gamingjournal.GamingJournal`).
+Sync is optional and off by default (Settings → iCloud Sync, applied on next launch). It mirrors the SwiftData store to the user's private CloudKit database (`iCloud.<BUNDLE_ID_PREFIX>.GamingJournal`, by default `iCloud.com.gamingjournal.GamingJournal`).
 
 To use it you need:
 
