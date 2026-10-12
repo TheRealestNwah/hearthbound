@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		6A00000000000000000000B2 /* GamingJournalWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 6A0000000000000000000032 /* GamingJournalWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		6C00000000000000000000B2 /* GamingJournalMacWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 6C0000000000000000000002 /* GamingJournalMacWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -46,6 +47,13 @@
 			remoteGlobalIDString = 6B0000000000000000000001;
 			remoteInfo = GamingJournal;
 		};
+		6C00000000000000000000A5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 6A000000000000000000000A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 6C0000000000000000000001;
+			remoteInfo = GamingJournalMacWidgets;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -60,6 +68,17 @@
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		6C00000000000000000000B1 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				6C00000000000000000000B2 /* GamingJournalMacWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -70,6 +89,7 @@
 		6B0000000000000000000002 /* Hearthbound.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Hearthbound.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6B0000000000000000000012 /* GamingJournalMacTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GamingJournalMacTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		6B0000000000000000000022 /* GamingJournalMacUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GamingJournalMacUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		6C0000000000000000000002 /* GamingJournalMacWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = GamingJournalMacWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -77,10 +97,23 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				GamingJournalWidgets-FreeTeam.entitlements,
+				GamingJournalWidgets-Mac-FreeTeam.entitlements,
+				GamingJournalWidgets-Mac.entitlements,
 				GamingJournalWidgets.entitlements,
 				Info.plist,
 			);
 			target = 6A0000000000000000000031 /* GamingJournalWidgets */;
+		};
+		6C00000000000000000000B3 /* Exceptions for "GamingJournalWidgets" folder in "GamingJournalMacWidgets" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				GamingJournalWidgets-FreeTeam.entitlements,
+				GamingJournalWidgets-Mac-FreeTeam.entitlements,
+				GamingJournalWidgets-Mac.entitlements,
+				GamingJournalWidgets.entitlements,
+				Info.plist,
+			);
+			target = 6C0000000000000000000001 /* GamingJournalMacWidgets */;
 		};
 		6A00000000000000000000B4 /* Exceptions for "GamingJournal" folder in "GamingJournal" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
@@ -125,6 +158,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				6A00000000000000000000B3 /* Exceptions for "GamingJournalWidgets" folder in "GamingJournalWidgets" target */,
+				6C00000000000000000000B3 /* Exceptions for "GamingJournalWidgets" folder in "GamingJournalMacWidgets" target */,
 			);
 			path = GamingJournalWidgets;
 			sourceTree = "<group>";
@@ -186,6 +220,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		6C0000000000000000000004 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -210,6 +251,7 @@
 				6A0000000000000000000012 /* GamingJournalTests.xctest */,
 				6A0000000000000000000022 /* GamingJournalUITests.xctest */,
 				6A0000000000000000000032 /* GamingJournalWidgets.appex */,
+				6C0000000000000000000002 /* GamingJournalMacWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -316,10 +358,12 @@
 				6B0000000000000000000008 /* Sources */,
 				6B0000000000000000000004 /* Frameworks */,
 				6B0000000000000000000009 /* Resources */,
+				6C00000000000000000000B1 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				6C00000000000000000000A6 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				6A0000000000000000000003 /* GamingJournal */,
@@ -377,6 +421,28 @@
 			productReference = 6B0000000000000000000022 /* GamingJournalMacUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		6C0000000000000000000001 /* GamingJournalMacWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6C0000000000000000000007 /* Build configuration list for PBXNativeTarget "GamingJournalMacWidgets" */;
+			buildPhases = (
+				6C0000000000000000000008 /* Sources */,
+				6C0000000000000000000004 /* Frameworks */,
+				6C0000000000000000000009 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				6A0000000000000000000033 /* GamingJournalWidgets */,
+			);
+			name = GamingJournalMacWidgets;
+			packageProductDependencies = (
+			);
+			productName = GamingJournalMacWidgets;
+			productReference = 6C0000000000000000000002 /* GamingJournalMacWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -424,6 +490,7 @@
 				6A0000000000000000000011 /* GamingJournalTests */,
 				6A0000000000000000000031 /* GamingJournalWidgets */,
 				6A0000000000000000000021 /* GamingJournalUITests */,
+				6C0000000000000000000001 /* GamingJournalMacWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -472,6 +539,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		6B0000000000000000000029 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6C0000000000000000000009 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -530,6 +604,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		6C0000000000000000000008 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -557,6 +638,11 @@
 			isa = PBXTargetDependency;
 			target = 6B0000000000000000000001 /* GamingJournal */;
 			targetProxy = 6B00000000000000000000A3 /* PBXContainerItemProxy */;
+		};
+		6C00000000000000000000A6 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 6C0000000000000000000001 /* GamingJournalMacWidgets */;
+			targetProxy = 6C00000000000000000000A5 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1215,6 +1301,7 @@
                 SUPPORTS_MACCATALYST = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				APP_GROUP = "$(TeamIdentifierPrefix)com.gamingjournal.GamingJournal.free";
 				CODE_SIGN_ENTITLEMENTS = GamingJournal/GamingJournal-Mac-FreeTeam.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -1283,6 +1370,94 @@
 				SWIFT_VERSION = 5.0;
 
 				TEST_TARGET_NAME = GamingJournalMac;
+			};
+			name = FreeTeam;
+		};
+		6C000000000000000000000E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "GamingJournalWidgets/GamingJournalWidgets-Mac.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = GamingJournalWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Hearthbound;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.gamingjournal.GamingJournal.Widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = macosx;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		6C000000000000000000000F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "GamingJournalWidgets/GamingJournalWidgets-Mac.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = GamingJournalWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Hearthbound;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.gamingjournal.GamingJournal.Widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = macosx;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		6C00000000000000000000C3 /* FreeTeam */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APP_GROUP = "$(TeamIdentifierPrefix)com.gamingjournal.GamingJournal.free";
+				CODE_SIGN_ENTITLEMENTS = "GamingJournalWidgets/GamingJournalWidgets-Mac-FreeTeam.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = GamingJournalWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Hearthbound;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.gamingjournal.GamingJournal.free.Widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = macosx;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
 			};
 			name = FreeTeam;
 		};
@@ -1365,6 +1540,16 @@
 				6B000000000000000000002E /* Debug */,
 				6B000000000000000000002F /* Release */,
 				6B00000000000000000000C4 /* FreeTeam */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		6C0000000000000000000007 /* Build configuration list for PBXNativeTarget "GamingJournalMacWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6C000000000000000000000E /* Debug */,
+				6C000000000000000000000F /* Release */,
+				6C00000000000000000000C3 /* FreeTeam */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

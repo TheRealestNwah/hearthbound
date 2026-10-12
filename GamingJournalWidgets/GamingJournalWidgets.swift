@@ -7,9 +7,11 @@ struct GamingJournalWidgetBundle: WidgetBundle {
         LatestEntryWidget()
         OnThisDayWidget()
         WriteAsWidget()
+        #if os(iOS)
         if #available(iOS 18.0, *) {
             WriteControl()
         }
+        #endif
     }
 }
 

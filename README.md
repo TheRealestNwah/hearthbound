@@ -64,7 +64,7 @@ xcodebuild test -project GamingJournal.xcodeproj -scheme "Hearthbound (Mac)" \
   -destination 'platform=macOS' -parallel-testing-enabled NO
 ```
 
-The first Mac version does not offer app locking, camera capture or desktop widgets. Signing, Photos/Spotlight/Shortcuts, reminders and iCloud require hands-on acceptance before release. See [platform support and validation](docs/PLATFORMS.md). **Hearthbound (Mac Free Team)** provides the separate `.free` configuration without iCloud or push; its signing is not checked by CI.
+The Mac version offers the journal lock (Touch ID or password) and desktop widgets, but not camera capture. Signing, Photos/Spotlight/Shortcuts, reminders and iCloud require hands-on acceptance before release. See [platform support and validation](docs/PLATFORMS.md). **Hearthbound (Mac Free Team)** provides the separate `.free` configuration without iCloud or push; its signing is not checked by CI.
 
 ## Running on your own device
 

@@ -6,6 +6,13 @@ enum Persistence {
     /// Store file name. The one-journal-per-character redesign started a fresh store rather than
     /// migrating the notebook one (nothing had shipped).
     static let storeName = "Journals"
+    #if FREE_TEAM && os(macOS)
+    /// The Mac free build's app group only carries the widget snapshot. Its journals stay in the
+    /// app's own container, where they were before the build had a group.
+    static let storeGroup: ModelConfiguration.GroupContainer = .none
+    #else
+    static let storeGroup: ModelConfiguration.GroupContainer = .automatic
+    #endif
 
     /// Opens the journal store, migrating older schema versions. Pass `url` to use a specific file
     /// (tests); otherwise the default store location is used. `cloudSync` mirrors the store to the
@@ -21,6 +28,7 @@ enum Persistence {
                 storeName,
                 schema: schema,
                 isStoredInMemoryOnly: inMemory,
+                groupContainer: storeGroup,
                 cloudKitDatabase: database
             )
         }

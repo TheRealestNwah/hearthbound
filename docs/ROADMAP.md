@@ -41,6 +41,8 @@ A journal's ribbon is kept per device in UserDefaults, not in the model.
 | Turn pages with a page curl | #154 |
 | Export the PDF book without freezing the app | #155 |
 | Make the reader easier to use with VoiceOver | #156 |
+| Lock the native Mac app with Touch ID or the login password | #238 |
+| Desktop widgets for the native Mac app | #239 |
 
 ## Platform expansion
 
@@ -64,9 +66,7 @@ No approved feature remains unimplemented on this roadmap. New features need a s
 
 ## Ideas
 
-Not planned yet; each needs the owner's go-ahead.
-
-- Extend the native Mac version with desktop widgets and an independently validated privacy lock.
+Not planned yet; each needs the owner's go-ahead. None are waiting right now.
 
 Removed on purpose, not coming back unless the owner asks: party, emotions, bonds, chapters, stats and play sessions.
 
