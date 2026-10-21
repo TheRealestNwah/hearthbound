@@ -17,3 +17,6 @@ build/
 
 # Per-developer signing identifiers (see Config/Identity.xcconfig)
 Config/Local.xcconfig
+
+# Private agent notes (CLAUDE.md is shared)
+CLAUDE.local.md
